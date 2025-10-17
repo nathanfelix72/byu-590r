@@ -103,11 +103,11 @@ jobs:
             sudo mkdir -p /var/www/html/api
             sudo chown -R ubuntu:ubuntu /var/www/html/api
           EOF
-          
+
           # Copy backend files to EC2
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" \
             backend/ ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/api/
-          
+
           # Use make deploy-ec2 for backend setup
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /var/www/html/api
@@ -156,17 +156,17 @@ jobs:
         run: |
           # Build Angular app locally using make
           make build-frontend-prod
-          
+
           # Create app directory and set permissions
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             sudo mkdir -p /var/www/html/app
             sudo chown -R ubuntu:ubuntu /var/www/html/app
           EOF
-          
+
           # Copy built files to EC2
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" \
             web-app/dist/byu-590r-builder/ ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/app/
-          
+
           # Set proper permissions and restart Apache
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             sudo chown -R www-data:www-data /var/www/html/app
@@ -191,30 +191,30 @@ jobs:
             curl -f http://localhost/app/ || echo "Frontend not responding"
           EOF
 
-    deploy-complete:
-      needs: [deploy-to-ec2]
-      runs-on: ubuntu-latest
-      if: github.ref == 'refs/heads/main'
+  deploy-complete:
+    needs: [deploy-to-ec2]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-      steps:
-        - name: Comment deployment success
-          uses: actions/github-script@v7
-          with:
-            script: |
-              // Only comment on pull requests, not on direct pushes to main
-              if (context.payload.pull_request) {
-                github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://${{ secrets.EC2_HOST }}/app\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://${{ secrets.EC2_HOST }}/api\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
-                });
-              } else {
-                // For direct pushes to main, create a deployment status
-                console.log('🚀 EC2 Deployment Successful!');
-                console.log('✅ Frontend: Deployed to EC2 (Apache)');
-                console.log(`🔗 Frontend URL: http://${{ secrets.EC2_HOST }}/app`);
-                console.log('✅ Backend: Deployed to EC2 (Apache)');
-                console.log(`🔗 Backend API: http://${{ secrets.EC2_HOST }}/api`);
-                console.log('🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!');
-              }
+    steps:
+      - name: Comment deployment success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Only comment on pull requests, not on direct pushes to main
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://${{ secrets.EC2_HOST }}/app\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://${{ secrets.EC2_HOST }}/api\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
+              });
+            } else {
+              // For direct pushes to main, create a deployment status
+              console.log('🚀 EC2 Deployment Successful!');
+              console.log('✅ Frontend: Deployed to EC2 (Apache)');
+              console.log(`🔗 Frontend URL: http://${{ secrets.EC2_HOST }}/app`);
+              console.log('✅ Backend: Deployed to EC2 (Apache)');
+              console.log(`🔗 Backend API: http://${{ secrets.EC2_HOST }}/api`);
+              console.log('🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!');
+            }
