@@ -57,12 +57,13 @@ The actual deployment is handled by GitHub Actions workflows in `.github/workflo
 
 ## Scripts
 
-- **`fix-github-actions-iam.sh`**: Fixes AWS IAM permissions for GitHub Actions (if needed)
-- **`cleanup-existing-instances.sh`**: Cleans up any existing EC2 instances
+- **`setup-ec2-server.sh`**: Sets up a fresh EC2 instance with all dependencies
+- **`teardown.sh`**: Cleans up EC2 resources when done
 
 ## Security
 
-- EC2 security group allows only SSH (22), HTTP (80), and HTTPS (443)
+- EC2 security group allows SSH (22), HTTP (80), HTTPS (443), Backend API (4444), and Frontend (8888)
 - All outbound traffic allowed for dependency downloads
 - Database only accessible from localhost
 - SSH key authentication used
+- Port-based routing eliminates Apache path conflicts
