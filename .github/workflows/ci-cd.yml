@@ -160,6 +160,27 @@ jobs:
             sudo systemctl reload apache2
           EOF
 
+      - name: Run Database Migrations
+        run: |
+          # Run Laravel migrations and seeders
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /var/www/html/api
+            
+            # Set proper ownership for migration
+            sudo chown -R ubuntu:ubuntu /var/www/html/api
+            
+            # Run fresh migrations with seeders
+            php artisan migrate:fresh --seed
+            
+            # Set proper permissions back to Apache
+            sudo chown -R www-data:www-data /var/www/html/api
+            sudo chmod -R 755 /var/www/html/api
+            sudo chmod -R 775 /var/www/html/api/storage
+            sudo chmod -R 775 /var/www/html/api/bootstrap/cache
+            
+            echo "Database migrations completed successfully!"
+          EOF
+
       - name: Deploy Frontend to EC2
         run: |
           # Build Angular app locally
