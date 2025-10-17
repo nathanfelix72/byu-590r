@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: BYU 590R Deploy
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 jobs:
   test-frontend:
+    name: Frontend Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -39,6 +40,7 @@ jobs:
           npm run build
 
   test-backend:
+    name: Backend Tests
     runs-on: ubuntu-latest
 
     services:
@@ -89,6 +91,7 @@ jobs:
           php artisan key:generate
 
   deploy-to-ec2:
+    name: Prod Deploy
     needs: [test-frontend, test-backend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -223,6 +226,7 @@ jobs:
           EOF
 
   deploy-complete:
+    name: Deploy Complete
     needs: [deploy-to-ec2]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
