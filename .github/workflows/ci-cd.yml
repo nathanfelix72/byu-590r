@@ -101,7 +101,7 @@ jobs:
           # Copy backend files to EC2
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" \
             backend/ ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/api/
-          
+
           # Install dependencies and configure Laravel
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /var/www/html/api
@@ -126,11 +126,11 @@ jobs:
           cd web-app
           npm install
           npm run build:prod
-          
+
           # Copy built files to EC2
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" \
             dist/byu-590r-builder/ ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/app/
-          
+
           # Restart Apache
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             sudo systemctl reload apache2
@@ -140,7 +140,7 @@ jobs:
         run: |
           # Wait a moment for services to start
           sleep 10
-          
+
           # Check if services are running
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             echo "=== Apache Status ==="
@@ -167,5 +167,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://app.${{ secrets.EC2_HOST }}\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://api.${{ secrets.EC2_HOST }}\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
+              body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://${{ secrets.EC2_HOST }}/app\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://${{ secrets.EC2_HOST }}/api\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
             })

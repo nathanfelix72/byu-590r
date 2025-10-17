@@ -182,27 +182,28 @@ MYSQL_EOF
 sudo a2enmod rewrite
 sudo a2enmod headers
 
-# Create virtual host for API (Laravel backend)
-sudo tee /etc/apache2/sites-available/api.conf > /dev/null << 'APACHE_API_EOF'
+# Create main virtual host with path-based routing
+sudo tee /etc/apache2/sites-available/byu-590r.conf > /dev/null << 'APACHE_MAIN_EOF'
 <VirtualHost *:80>
-    ServerName api.localhost
-    DocumentRoot /var/www/html/api/public
+    ServerName localhost
+    DocumentRoot /var/www/html
+    
+    # API routing - Laravel backend
+    Alias /api /var/www/html/api/public
     
     <Directory /var/www/html/api/public>
         AllowOverride All
         Require all granted
+        
+        # Laravel routing
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule ^(.*)$ index.php [QSA,L]
     </Directory>
     
-    ErrorLog ${APACHE_LOG_DIR}/api_error.log
-    CustomLog ${APACHE_LOG_DIR}/api_access.log combined
-</VirtualHost>
-APACHE_API_EOF
-
-# Create virtual host for App (Angular frontend)
-sudo tee /etc/apache2/sites-available/app.conf > /dev/null << 'APACHE_APP_EOF'
-<VirtualHost *:80>
-    ServerName app.localhost
-    DocumentRoot /var/www/html/app
+    # App routing - Angular frontend
+    Alias /app /var/www/html/app
     
     <Directory /var/www/html/app>
         AllowOverride All
@@ -210,21 +211,29 @@ sudo tee /etc/apache2/sites-available/app.conf > /dev/null << 'APACHE_APP_EOF'
         
         # Angular routing support
         RewriteEngine On
-        RewriteBase /
+        RewriteBase /app
         RewriteRule ^index\.html$ - [L]
         RewriteCond %{REQUEST_FILENAME} !-f
         RewriteCond %{REQUEST_FILENAME} !-d
-        RewriteRule . /index.html [L]
+        RewriteRule . /app/index.html [L]
     </Directory>
     
-    ErrorLog ${APACHE_LOG_DIR}/app_error.log
-    CustomLog ${APACHE_LOG_DIR}/app_access.log combined
+    # Default root - redirect to app
+    <Directory /var/www/html>
+        AllowOverride All
+        Require all granted
+        
+        RewriteEngine On
+        RewriteRule ^$ /app/ [R=301,L]
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/byu590r_error.log
+    CustomLog ${APACHE_LOG_DIR}/byu590r_access.log combined
 </VirtualHost>
-APACHE_APP_EOF
+APACHE_MAIN_EOF
 
-# Enable sites and disable default
-sudo a2ensite api.conf
-sudo a2ensite app.conf
+# Enable site and disable default
+sudo a2ensite byu-590r.conf
 sudo a2dissite 000-default
 sudo systemctl reload apache2
 
