@@ -215,7 +215,7 @@ setup-backend-ec2:
 # Run migrations on EC2
 migrate-ec2:
 	@echo "Running database migrations on EC2..."
-	cd backend && php artisan migrate:fresh --seed
+	cd backend && php artisan migrate --force
 	@echo "Database migrations complete!"
 
 # Build frontend for production

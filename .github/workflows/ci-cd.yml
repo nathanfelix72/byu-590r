@@ -48,9 +48,9 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: byu_590r_app_test
-          MYSQL_USER: byu_user
-          MYSQL_PASSWORD: byu_password
+          MYSQL_DATABASE: ${{ secrets.DB_DATABASE || 'byu_590r_app' }}_test
+          MYSQL_USER: ${{ secrets.DB_USERNAME || 'byu_user' }}
+          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD || 'byu_password' }}
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -77,8 +77,33 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           sed -i 's/DB_HOST=mysql/DB_HOST=127.0.0.1/' .env
-          sed -i 's/DB_DATABASE=byu_590r_app/DB_DATABASE=byu_590r_app_test/' .env
-          echo "APP_DEBUG=true" >> .env
+
+          # Use secrets for database configuration
+          if [ -n "${{ secrets.DB_DATABASE }}" ]; then
+            sed -i "s/DB_DATABASE=byu_590r_app/DB_DATABASE=${{ secrets.DB_DATABASE }}_test/" .env
+          else
+            sed -i 's/DB_DATABASE=byu_590r_app/DB_DATABASE=byu_590r_app_test/' .env
+          fi
+
+          if [ -n "${{ secrets.DB_USERNAME }}" ]; then
+            sed -i "s/DB_USERNAME=byu_user/DB_USERNAME=${{ secrets.DB_USERNAME }}/" .env
+          fi
+
+          if [ -n "${{ secrets.DB_PASSWORD }}" ]; then
+            sed -i "s/DB_PASSWORD=byu_password/DB_PASSWORD=${{ secrets.DB_PASSWORD }}/" .env
+          fi
+
+          # Use APP_DEBUG from secrets if provided
+          if [ -n "${{ secrets.APP_DEBUG }}" ]; then
+            sed -i "s/APP_DEBUG=.*/APP_DEBUG=${{ secrets.APP_DEBUG }}/" .env
+          else
+            echo "APP_DEBUG=true" >> .env
+          fi
+
+          # Add OPENAI_API_KEY from secrets if provided
+          if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+            sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}/" .env
+          fi
 
       - name: Run Laravel tests
         run: |
@@ -143,20 +168,37 @@ jobs:
               sed -i "s/DB_DATABASE=.*/DB_DATABASE=${{ secrets.DB_DATABASE }}/" .env
             fi
             
+            # Update APP_DEBUG from GitHub secrets if provided
+            if [ -n "${{ secrets.APP_DEBUG }}" ]; then
+              sed -i "s/APP_DEBUG=.*/APP_DEBUG=${{ secrets.APP_DEBUG }}/" .env
+            else
+              echo "APP_DEBUG=true" >> .env
+            fi
+            
+            # Update OPENAI_API_KEY from GitHub secrets if provided
+            if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+              sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}/" .env
+            fi
+            
             # Set APP_ENV to production for deployment
             sed -i "s/APP_ENV=.*/APP_ENV=production/" .env
-            echo "APP_DEBUG=true" >> .env
             
             # Use make commands for deployment
             make setup-backend-ec2
             composer install --no-dev --optimize-autoloader
-            make migrate-ec2
+            
+            # Generate application key (ensure clean generation)
+            php artisan key:generate --show > /tmp/app_key
+            sed -i "s/APP_KEY=.*/APP_KEY=$(cat /tmp/app_key)/" .env
+            rm /tmp/app_key
+            
+            # Run database migrations
+            php artisan migrate --force
             
             # Configure Laravel for production
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            php artisan key:generate
             
             # Set proper permissions for Apache
             sudo chown -R www-data:www-data /var/www/html/api
@@ -218,7 +260,10 @@ jobs:
             cd /var/www/html/api
             sudo chown -R ubuntu:ubuntu .
             sudo chmod -R 775 storage bootstrap/cache
-            php artisan key:generate --force
+            # Generate application key (ensure clean generation)
+            php artisan key:generate --show > /tmp/app_key
+            sed -i "s/APP_KEY=.*/APP_KEY=$(cat /tmp/app_key)/" .env
+            rm /tmp/app_key
             sudo chown -R www-data:www-data .
             sudo chmod -R 755 .
             sudo chmod -R 775 storage bootstrap/cache
