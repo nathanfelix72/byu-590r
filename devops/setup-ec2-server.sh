@@ -183,12 +183,6 @@ create_ec2_instance() {
         --port 4444 \
         --cidr 0.0.0.0/0 2>/dev/null || log_info "Backend port 4444 rule already exists"
     
-    aws ec2 authorize-security-group-ingress \
-        --group-id "$SECURITY_GROUP" \
-        --protocol tcp \
-        --port 8888 \
-        --cidr 0.0.0.0/0 2>/dev/null || log_info "Frontend port 8888 rule already exists"
-    
     log_success "EC2 instance created: $INSTANCE_ID with Elastic IP: $ELASTIC_IP"
 }
 
@@ -278,7 +272,7 @@ sudo a2enmod headers
 APACHE_BACKEND_EOF
 
     sudo tee /etc/apache2/sites-available/byu-590r-frontend.conf > /dev/null << 'APACHE_FRONTEND_EOF'
-<VirtualHost *:8888>
+<VirtualHost *:80>
     ServerName localhost
     DocumentRoot /var/www/html/app/browser
     
@@ -302,34 +296,13 @@ APACHE_BACKEND_EOF
 </VirtualHost>
 APACHE_FRONTEND_EOF
 
-    sudo tee /etc/apache2/sites-available/byu-590r-main.conf > /dev/null << 'APACHE_MAIN_EOF'
-<VirtualHost *:80>
-    ServerName localhost
-    DocumentRoot /var/www/html
-    
-    # Default root - redirect to frontend
-    <Directory /var/www/html>
-        AllowOverride All
-        Require all granted
-        
-        RewriteEngine On
-        RewriteRule ^$ http://localhost:8888/ [R=301,L]
-    </Directory>
-    
-    ErrorLog ${APACHE_LOG_DIR}/byu590r_main_error.log
-    CustomLog ${APACHE_LOG_DIR}/byu590r_main_access.log combined
-</VirtualHost>
-APACHE_MAIN_EOF
-
     # Enable sites and disable default
     sudo a2ensite byu-590r-backend.conf
     sudo a2ensite byu-590r-frontend.conf
-    sudo a2ensite byu-590r-main.conf
     sudo a2dissite 000-default
     
     # Add ports to Apache configuration
     echo "Listen 4444" | sudo tee -a /etc/apache2/ports.conf
-    echo "Listen 8888" | sudo tee -a /etc/apache2/ports.conf
     
     sudo systemctl reload apache2
 
@@ -412,7 +385,7 @@ main() {
     echo "  6. Once secrets are updated, push changes to main branch to trigger deployment"
     echo ""
     echo "  🚀 Your application will be available at:"
-    echo "     Frontend: http://$EC2_HOST:8888"
+    echo "     Frontend: http://$EC2_HOST"
     echo "     Backend API: http://$EC2_HOST:4444/api/hello"
     echo ""
     log_info "Configuration saved to: .server-config"

@@ -38,8 +38,16 @@ A student-friendly monorepo project with Laravel backend, Angular frontend, and 
 2. **Configure GitHub Actions**:
 
    - Add these secrets to your GitHub repository:
-     - `EC2_HOST`: Your EC2 public IP
-     - `EC2_SSH_PRIVATE_KEY`: Contents of your SSH private key
+     - `EC2_HOST`: Your EC2 public IP address for deployment
+     - `EC2_SSH_PRIVATE_KEY`: Contents of your SSH private key for server access
+     - `DB_DATABASE`: Database name for the Laravel application
+     - `DB_USERNAME`: Database username for MySQL connection
+     - `DB_PASSWORD`: Database password for MySQL connection
+     - `APP_DEBUG`: Laravel debug mode setting (true/false)
+     - `OPENAI_API_KEY`: OpenAI API key for AI features (optional)
+     - `AWS_ACCESS_KEY_ID`: AWS access key for AWS services
+     - `AWS_SECRET_ACCESS_KEY`: AWS secret key for AWS services
+     - `AWS_REGION`: AWS region for AWS services
    - See `.github/README.md` for detailed instructions
 
 3. **Deploy via GitHub Actions**:

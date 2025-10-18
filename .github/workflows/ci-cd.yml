@@ -257,7 +257,7 @@ jobs:
             echo "=== Laravel API Test ==="
             curl -f http://localhost:4444/api/hello || echo "API endpoint not responding"
             echo "=== Frontend Test ==="
-            curl -f http://localhost:8888/ || echo "Frontend not responding"
+            curl -f http://localhost/ || echo "Frontend not responding"
           EOF
 
   deploy-complete:
@@ -277,13 +277,13 @@ jobs:
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://${{ secrets.EC2_HOST }}:8888\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://${{ secrets.EC2_HOST }}:4444/api/hello\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
+                body: `🚀 **EC2 Deployment Successful!**\n\n✅ **Frontend**: Deployed to EC2 (Apache)\n🔗 **Frontend URL**: http://${{ secrets.EC2_HOST }}\n\n✅ **Backend**: Deployed to EC2 (Apache)\n🔗 **Backend API**: http://${{ secrets.EC2_HOST }}:4444/api/hello\n\n🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!`
               });
             } else {
               // For direct pushes to main, create a deployment status
               console.log('🚀 EC2 Deployment Successful!');
               console.log('✅ Frontend: Deployed to EC2 (Apache)');
-              console.log(`🔗 Frontend URL: http://${{ secrets.EC2_HOST }}:8888`);
+              console.log(`🔗 Frontend URL: http://${{ secrets.EC2_HOST }}`);
               console.log('✅ Backend: Deployed to EC2 (Apache)');
               console.log(`🔗 Backend API: http://${{ secrets.EC2_HOST }}:4444/api/hello`);
               console.log('🎉 Your BYU 590R Monorepo is now running on EC2 with Apache!');
