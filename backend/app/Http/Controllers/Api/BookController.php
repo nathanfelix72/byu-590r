@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -199,10 +200,29 @@ class BookController extends BaseController
 
     public function sendBookReport()
     {
-        $authUser = Auth::user();
-        \Illuminate\Support\Facades\Artisan::call('auto:overdue-books', ['--email' => $authUser->email]);
-        $success['success'] = true;
-        return $this->sendResponse($success, 'Book Report Sent!');
+        try {
+            $authUser = Auth::user();
+            $email = $authUser->email;
+            
+            Log::info('Sending book report', ['email' => $email]);
+            
+            // Call the books report command (sends list of Harry Potter books)
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('report:books', ['--email' => $email]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            
+            Log::info('Book report command executed', ['exit_code' => $exitCode, 'output' => $output]);
+            
+            if ($exitCode !== 0) {
+                Log::error('Book report command failed with exit code: ' . $exitCode);
+                return $this->sendError('Failed to send book report', [], 500);
+            }
+            
+            $success['success'] = true;
+            return $this->sendResponse($success, 'Book Report Sent!');
+        } catch (\Exception $e) {
+            Log::error('Book report failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return $this->sendError('Failed to send book report: ' . $e->getMessage(), [], 500);
+        }
     }
 
     public function returnBook($id)

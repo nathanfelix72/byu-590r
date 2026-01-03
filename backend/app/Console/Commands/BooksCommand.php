@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\BooksMail;
 use App\Models\Book;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class BooksCommand extends Command
@@ -40,8 +41,14 @@ class BooksCommand extends Command
 
         if ($books->count() > 0) {
             //Send one main list of all books email to management
-            Mail::to($sendToEmail)->send(new BooksMail($books));
-            $this->info('Books report sent successfully!');
+            try {
+                Mail::to($sendToEmail)->send(new BooksMail($books));
+                $this->info('Books report sent successfully to ' . $sendToEmail);
+            } catch (\Exception $e) {
+                $this->error('Failed to send email: ' . $e->getMessage());
+                Log::error('Email send failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                return Command::FAILURE;
+            }
         } else {
             $this->warn('No books found matching criteria');
         }
