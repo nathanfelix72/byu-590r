@@ -228,27 +228,39 @@ class BookController extends BaseController
     public function returnBook($id)
     {
         $book = Book::findOrFail($id);
-        $book->checked_qty = $book->checked_qty - 1;
-
-        if ($book->checked_qty < 0) {
-            return $this->sendError('Can not return additional books. All returned!');
-        }
-
+        
         $authUser = Auth::user();
         $user = User::findOrFail($authUser->id);
-        $checkoutID = DB::table('user_book_checkouts')
-            ->where('user_id', $user->id)
-            ->where('book_id', $book->id)
-            ->first()->checkout_id;
+        
+        // Find an active checkout (where checkin_date is null) for this user and book
+        $userBookCheckout = DB::table('user_book_checkouts')
+            ->join('checkouts', 'user_book_checkouts.checkout_id', '=', 'checkouts.id')
+            ->where('user_book_checkouts.user_id', $user->id)
+            ->where('user_book_checkouts.book_id', $book->id)
+            ->whereNull('checkouts.checkin_date')
+            ->select('user_book_checkouts.checkout_id')
+            ->first();
+
+        if (!$userBookCheckout) {
+            return $this->sendError('No active checkout found for this book', [], 404);
+        }
+
+        $checkoutID = $userBookCheckout->checkout_id;
 
         DB::table('checkouts')->where('id', $checkoutID)->update([
             'checkin_date' => date('Y-m-d')
         ]);
 
+        $book->checked_qty = $book->checked_qty - 1;
+
+        if ($book->checked_qty < 0) {
+            $book->checked_qty = 0;
+        }
+
         $book->save();
 
         $book = Book::findOrFail($id)->load(['checkouts' => function ($query) {
-            $query->whereNotNull('checkin_date');
+            $query->whereNull('checkin_date');
         }]);
         $success['book'] = $book;
         return $this->sendResponse($success, 'Book Returned');

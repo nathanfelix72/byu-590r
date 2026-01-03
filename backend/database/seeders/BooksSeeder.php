@@ -23,8 +23,8 @@ class BooksSeeder extends Seeder
                 'name' => 'The Book of Mormon',
                 'description' => 'Another Testament of Jesus Christ',
                 'file' => 'images/bom.jpg',
-                'checked_qty' => 1,
-                'inventory_total_qty' => 1,
+                'checked_qty' => 0,
+                'inventory_total_qty' => 10,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now()
             ],
