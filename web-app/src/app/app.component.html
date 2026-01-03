@@ -1,10 +1,178 @@
-<div class="app-container">
-  <header class="app-header">
-    <h1>{{ title }}</h1>
-    <p>{{ message }}</p>
-  </header>
+<div
+  class="app-container"
+  [class.theme-dark]="theme() === 'dark'"
+  [class.theme-light]="theme() === 'light'"
+>
+  @if (isAuthenticated) {
+  <mat-toolbar color="primary" class="app-bar">
+    <span class="app-bar-spacer"></span>
+    <div class="nav-buttons">
+      <a mat-button routerLink="/home" routerLinkActive="active">Home</a>
+      <a mat-button routerLink="/books" routerLinkActive="active">Books</a>
+    </div>
+
+    <button
+      mat-icon-button
+      [matMenuTriggerFor]="profileMenu"
+      class="avatar-button"
+    >
+      @if (avatarURL) {
+      <img [src]="avatarURL" alt="Avatar" class="avatar-image" />
+      } @else {
+      <mat-icon>account_circle</mat-icon>
+      }
+    </button>
+
+    <mat-menu #profileMenu="matMenu">
+      <div class="profile-menu-header">
+        <h3>{{ profile().name }}</h3>
+      </div>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="changeTheme()">
+        <mat-icon>{{
+          theme() === "light" ? "dark_mode" : "light_mode"
+        }}</mat-icon>
+        <span>Toggle Theme</span>
+      </button>
+      <button mat-menu-item (click)="openProfileDialog()">
+        <mat-icon>person</mat-icon>
+        <span>Profile</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  </mat-toolbar>
+  }
 
   <main class="app-main">
+    @if (isAuthenticated) {
     <router-outlet></router-outlet>
+    } @else {
+    <app-login></app-login>
+    }
   </main>
+
+  @if (profileDialog()) {
+  <div class="modal" (click)="profileDialog.set(false)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 mat-dialog-title>Profile</h2>
+          <button mat-icon-button (click)="profileDialog.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-subtitle">Enter your profile options here</p>
+          <div class="avatar-preview">
+            @if (avatarURL) {
+            <img [src]="avatarURL" alt="Profile" class="profile-image" />
+            } @else {
+            <mat-icon class="avatar-icon-large">account_circle</mat-icon>
+            }
+          </div>
+          <div class="file-input-container">
+            <button
+              mat-raised-button
+              color="primary"
+              [disabled]="profileIsUploading()"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                (change)="onAvatarChange($event)"
+                [disabled]="profileIsUploading()"
+                class="file-input"
+              />
+              @if (profileIsUploading()) {
+              <ng-container>
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Uploading...</span>
+              </ng-container>
+              } @else {
+              <span>Profile picture change</span>
+              }
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            mat-button
+            (click)="removeAvatar()"
+            [disabled]="profileIsUploading() || !avatarURL"
+          >
+            Remove Profile Picture
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  } @if (showEmailNotVerifiedDialog()) {
+  <div class="modal" (click)="showEmailNotVerifiedDialog.set(false)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Your email address ({{ userStore.user()?.email }}) is not yet
+            verified
+          </h5>
+        </div>
+        <div class="modal-body">
+          @if (showChangeEmailTextField()) {
+          <form [formGroup]="changeEmailForm">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email</mat-label>
+              <input matInput type="email" formControlName="email" />
+            </mat-form-field>
+          </form>
+          }
+        </div>
+        <div class="modal-footer">
+          @if (!verificationEmailLoading()) { @if (!showChangeEmailTextField())
+          {
+          <button mat-button color="warn" (click)="logout()">Logout</button>
+          <button mat-button color="primary" (click)="sendVerificationEmail()">
+            Send verification email
+          </button>
+          <button
+            mat-button
+            color="accent"
+            (click)="showChangeEmailTextField.set(true)"
+          >
+            Change email
+          </button>
+          } @else {
+          <button mat-button (click)="showChangeEmailTextField.set(false)">
+            Back
+          </button>
+          <button
+            mat-button
+            color="primary"
+            (click)="changeProfileEmail()"
+            [disabled]="
+              !changeEmailForm.valid ||
+              changeEmailForm.value.email === userStore.user()?.email
+            "
+          >
+            Submit email change
+          </button>
+          } } @else {
+          <mat-spinner diameter="30"></mat-spinner>
+          }
+        </div>
+        @if (successVerificationMessage()) {
+        <div
+          class="alert alert-success"
+          (click)="successVerificationMessage.set('')"
+        >
+          {{ successVerificationMessage() }}
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+  }
 </div>

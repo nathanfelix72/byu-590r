@@ -1,0 +1,50 @@
+@use "@angular/material" as mat;
+@use "./assets/styles/colors" as colors;
+@use "./assets/styles/spacing" as spacing;
+@use "./assets/styles/fonts" as fonts;
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: colors.$colors-background;
+  color: colors.$colors-text-primary;
+  font-family: fonts.$main-typography;
+  font-size: fonts.$font-size-base;
+  line-height: fonts.$line-height-normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::ng-deep {
+  .error-snackbar {
+    .mdc-snackbar__surface {
+      background-color: colors.$colors-error !important;
+      color: colors.$colors-white !important;
+    }
+  }
+}

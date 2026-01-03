@@ -29,7 +29,6 @@ class S3Test extends TestCase
             ]
         ]);
         
-        // Verify the response contains expected fields
         $responseData = $response->json();
         $this->assertArrayHasKey('bucket', $responseData);
         $this->assertArrayHasKey('test_file', $responseData);
@@ -60,7 +59,6 @@ class S3Test extends TestCase
             ]
         ]);
         
-        // Verify the response contains expected fields
         $responseData = $response->json();
         $this->assertArrayHasKey('bucket', $responseData);
         $this->assertEquals(env('S3_BUCKET', '590r'), $responseData['bucket']);
@@ -78,7 +76,6 @@ class S3Test extends TestCase
         $originalSecret = env('AWS_SECRET_ACCESS_KEY');
         $originalBucket = env('S3_BUCKET');
         
-        // Set empty credentials and bucket
         config(['filesystems.disks.s3.key' => '']);
         config(['filesystems.disks.s3.secret' => '']);
         config(['filesystems.disks.s3.bucket' => '']);

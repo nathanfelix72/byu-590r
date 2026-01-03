@@ -42,7 +42,6 @@ class HelloWorldController extends Controller
         try {
             $bucketName = env('S3_BUCKET', 'byu-590r-' . time() . '-fallback');
             
-            // Check if S3 bucket is configured
             if (empty($bucketName)) {
                 return response()->json([
                     'status' => 'error',
@@ -67,7 +66,6 @@ class HelloWorldController extends Controller
                 ], 500);
             }
             
-            // Verify file exists
             $fileExists = Storage::disk('s3')->exists($testFileName);
             
             if (!$fileExists) {
@@ -103,7 +101,6 @@ class HelloWorldController extends Controller
                 ], 500);
             }
             
-            // Verify file is deleted
             $fileStillExists = Storage::disk('s3')->exists($testFileName);
             
             if ($fileStillExists) {

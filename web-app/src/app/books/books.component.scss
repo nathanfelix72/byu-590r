@@ -1,0 +1,207 @@
+@use "../../assets/styles/colors" as colors;
+@use "../../assets/styles/spacing" as spacing;
+@use "../../assets/styles/fonts" as fonts;
+
+.books-container {
+  padding: spacing.$spacing-large;
+}
+
+.buttons-row {
+  display: flex;
+  gap: spacing.$spacing-medium;
+  margin-bottom: spacing.$spacing-medium;
+}
+
+.book-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-actions {
+  display: flex;
+  gap: spacing.$spacing-extra-small;
+}
+
+.book-description {
+  margin-bottom: spacing.$spacing-medium;
+}
+
+.authors-section {
+  margin-bottom: spacing.$spacing-medium;
+
+  ul {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  li {
+    margin-bottom: spacing.$spacing-small;
+  }
+}
+
+.phones {
+  margin-left: spacing.$spacing-medium;
+  font-size: 0.9rem;
+  color: colors.$colors-ui-grey;
+}
+
+.book-image-container {
+  text-align: center;
+  margin: spacing.$spacing-medium 0;
+}
+
+.book-image {
+  width: 300px;
+  height: 400px;
+  object-fit: cover;
+  border-radius: spacing.$border-radius-small;
+
+  &.checked-out-image {
+    opacity: 0.25;
+  }
+}
+
+.checked-out-label {
+  color: red;
+  font-weight: bold;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-dialog {
+  position: relative;
+  width: 90%;
+  max-width: 500px;
+
+  &.modal-lg {
+    max-width: 1024px;
+  }
+}
+
+.modal-content {
+  background-color: colors.$colors-surface;
+  color: colors.$colors-text-primary;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.alert {
+  cursor: pointer;
+  margin: spacing.$spacing-medium 0;
+  border-radius: spacing.$border-radius-small;
+  padding: spacing.$spacing-small spacing.$spacing-medium;
+}
+
+.alert-info {
+  background-color: rgba(2, 136, 209, 0.15);
+  color: colors.$colors-info;
+  border: 1px solid colors.$colors-info;
+}
+
+.alert-danger {
+  background-color: rgba(211, 47, 47, 0.15);
+  color: colors.$colors-error;
+  border: 1px solid colors.$colors-error;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: spacing.$spacing-medium;
+}
+
+.file-input-label {
+  display: block;
+  color: colors.$colors-text-primary;
+  margin-bottom: spacing.$spacing-extra-small;
+  @include fonts.fonts-caption;
+  font-weight: fonts.$font-weight-medium;
+}
+
+.file-input {
+  width: 100%;
+  padding: spacing.$spacing-small spacing.$spacing-medium;
+  border: 1px solid colors.$colors-border;
+  border-radius: spacing.$border-radius-small;
+  background-color: colors.$colors-white;
+  color: colors.$colors-text-primary;
+  @include fonts.fonts-body;
+  cursor: pointer;
+
+  &:focus {
+    outline: 2px solid colors.$colors-primary;
+    outline-offset: 2px;
+    border-color: colors.$colors-primary;
+  }
+
+  &::file-selector-button {
+    padding: spacing.$spacing-extra-small spacing.$spacing-small;
+    border: none;
+    border-radius: spacing.$border-radius-extra-small;
+    background-color: colors.$colors-primary;
+    color: colors.$colors-white;
+    cursor: pointer;
+    @include fonts.fonts-buttons;
+    margin-right: spacing.$spacing-small;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: colors.$colors-primary-dark;
+    }
+  }
+}
+
+.file-input-error {
+  color: colors.$colors-error;
+  @include fonts.fonts-caption;
+  margin-top: spacing.$spacing-extra-small;
+  padding-left: spacing.$spacing-small;
+}
+
+::ng-deep {
+  .mat-mdc-card {
+    background-color: colors.$colors-surface !important;
+    color: colors.$colors-text-primary !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .mat-mdc-card-title,
+  .mat-mdc-card-subtitle {
+    color: colors.$colors-text-primary !important;
+    @include fonts.fonts-h3;
+  }
+
+  .mat-mdc-form-field {
+    .mat-mdc-text-field-wrapper {
+      background-color: colors.$colors-white;
+    }
+
+    .mat-mdc-form-field-label {
+      color: colors.$colors-text-secondary !important;
+      @include fonts.fonts-body;
+    }
+
+    .mat-mdc-input-element {
+      color: colors.$colors-text-primary !important;
+      @include fonts.fonts-body;
+    }
+
+    .mat-mdc-form-field-error {
+      color: colors.$colors-error !important;
+      @include fonts.fonts-caption;
+    }
+  }
+}

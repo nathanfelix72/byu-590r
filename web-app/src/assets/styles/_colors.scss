@@ -1,0 +1,41 @@
+// Primary colors - Accessible blue palette
+$colors-primary: #1976d2;
+$colors-primary-dark: #1565c0;
+$colors-primary-light: #42a5f5;
+
+// Secondary colors
+$colors-secondary: #424242;
+$colors-accent: #ff6f00;
+
+// Neutral colors - High contrast for accessibility
+$colors-white: #ffffff;
+$colors-off-white: #fafafa;
+$colors-light-grey: #e0e0e0;
+$colors-medium-grey: #9e9e9e;
+$colors-dark-grey: #616161;
+$colors-charcoal: #212121;
+$colors-black: #000000;
+
+// Semantic colors
+$colors-success: #2e7d32;
+$colors-warning: #f57c00;
+$colors-error: #d32f2f;
+$colors-info: #0288d1;
+
+// Background and text - High contrast combinations
+$colors-background: $colors-off-white;
+$colors-surface: $colors-white;
+$colors-text-primary: $colors-charcoal;
+$colors-text-secondary: $colors-dark-grey;
+$colors-border: $colors-light-grey;
+$colors-divider: $colors-light-grey;
+
+// Legacy support (mapped to new colors for backward compatibility)
+$colors-ui-white: $colors-white;
+$colors-ui-black: $colors-charcoal;
+$colors-ui-grey: $colors-dark-grey;
+$colors-ui-blue: $colors-primary;
+$colors-ui-tan: $colors-background;
+$colors-general-text: $colors-text-primary;
+$colors-yellow: $colors-accent;
+$colors-red-error: $colors-error;

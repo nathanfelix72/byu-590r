@@ -342,6 +342,71 @@ create_s3_bucket() {
     fi
     
     echo "S3_BUCKET=$BUCKET_NAME" >> ../.server-config
+    
+    # Upload book images to S3
+    upload_book_images_to_s3 "$BUCKET_NAME"
+}
+
+# Upload book images to S3
+upload_book_images_to_s3() {
+    local BUCKET_NAME=$1
+    
+    if [ -z "$BUCKET_NAME" ]; then
+        log_warning "S3 bucket name not provided, skipping book image upload"
+        return
+    fi
+    
+    log_info "Uploading book images to S3 bucket: $BUCKET_NAME"
+    
+    # Get the script directory and navigate to project root
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    BOOKS_DIR="$PROJECT_ROOT/backend/public/assets/books"
+    
+    if [ ! -d "$BOOKS_DIR" ]; then
+        log_warning "Book images directory not found: $BOOKS_DIR"
+        log_info "Skipping book image upload - directory will be created during deployment"
+        return
+    fi
+    
+    # Files to upload (only the ones used in the seeder)
+    FILES_TO_UPLOAD=(
+        "hp1.jpeg"
+        "hp2.jpeg"
+        "hp3.jpeg"
+        "hp4.jpeg"
+        "hp5.jpeg"
+        "hp6.jpeg"
+        "hp7.jpeg"
+        "mb1.jpg"
+        "mb2.jpg"
+        "mb3.jpg"
+        "bom.jpg"
+    )
+    
+    UPLOADED_COUNT=0
+    for local_file in "${FILES_TO_UPLOAD[@]}"; do
+        s3_key="images/$local_file"
+        local_path="$BOOKS_DIR/$local_file"
+        
+        if [ -f "$local_path" ]; then
+            log_info "Uploading $local_file to s3://$BUCKET_NAME/$s3_key"
+            if aws s3 cp "$local_path" "s3://$BUCKET_NAME/$s3_key" --acl public-read 2>/dev/null; then
+                ((UPLOADED_COUNT++))
+                log_success "Uploaded $local_file successfully"
+            else
+                log_warning "Failed to upload $local_file"
+            fi
+        else
+            log_warning "File not found: $local_path"
+        fi
+    done
+    
+    if [ $UPLOADED_COUNT -gt 0 ]; then
+        log_success "Uploaded $UPLOADED_COUNT book images to S3 under /images folder"
+    else
+        log_warning "No book images were uploaded"
+    fi
 }
 
 # Setup EC2 instance with dependencies only

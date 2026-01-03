@@ -1,0 +1,32 @@
+@use '../../assets/styles/colors' as colors;
+@use '../../assets/styles/spacing' as spacing;
+@use '../../assets/styles/fonts' as fonts;
+
+.home-container {
+  padding: spacing.$spacing-large;
+  
+  h2 {
+    @include fonts.fonts-h2;
+    color: colors.$colors-text-primary;
+    margin-bottom: spacing.$spacing-medium;
+  }
+
+  p {
+    @include fonts.fonts-body;
+    color: colors.$colors-text-primary;
+  }
+}
+
+::ng-deep {
+  .mat-mdc-card {
+    background-color: colors.$colors-surface !important;
+    color: colors.$colors-text-primary !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .mat-mdc-list-item {
+    color: colors.$colors-text-primary !important;
+    @include fonts.fonts-body;
+  }
+}
+

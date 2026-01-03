@@ -1,0 +1,13 @@
+<div class="home-container">
+  <h2>Here are your favorite books:</h2>
+  <mat-card>
+    <mat-card-content>
+      <mat-list>
+        @for (book of listOfBooks; track book) {
+          <mat-list-item>{{ book }}</mat-list-item>
+        }
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+</div>
+

@@ -7,12 +7,18 @@ start:
 	@$(MAKE) stop
 	@echo "Checking Laravel backend configuration..."
 	@$(MAKE) setup-backend
-	@echo "Installing Laravel backend dependencies..."
+	@echo "Installing Laravel backend dependencies locally..."
 	cd backend && composer install
 	@echo "Starting Laravel backend with MySQL..."
 	cd backend && docker compose up -d
 	@echo "Waiting for database to be ready..."
 	@sleep 15
+	@echo "Installing Laravel backend dependencies in Docker container..."
+	cd backend && docker compose exec -T app composer install || true
+	@echo "Clearing Laravel caches and regenerating autoloader..."
+	cd backend && docker compose exec -T app composer dump-autoload -o || true
+	cd backend && docker compose exec -T app php artisan optimize:clear || true
+	cd backend && docker compose exec -T app php artisan package:discover || true
 	@echo "Running database migrations and seeding..."
 	@$(MAKE) migrate
 	@echo "Detecting environment..."
@@ -31,7 +37,9 @@ start:
 	fi
 	@echo "Finalizing Laravel setup..."
 	@echo "Generating application key to ensure encryption is properly configured..."
-	cd backend && docker compose exec -T app php artisan key:generate
+	cd backend && docker compose exec -T app php artisan key:generate || true
+	@echo "Clearing caches one final time..."
+	cd backend && docker compose exec -T app php artisan optimize:clear || true
 	@echo "All processes completed successfully!"
 
 # Start with hot reloading (development mode)
