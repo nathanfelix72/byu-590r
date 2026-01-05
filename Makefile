@@ -12,15 +12,30 @@ start:
 	@echo "Starting Laravel backend with MySQL..."
 	cd backend && docker compose up -d
 	@echo "Waiting for database to be ready..."
-	@sleep 15
+	@for i in $$(seq 1 30); do \
+		if docker compose -f backend/docker-compose.yml exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MySQL is ready!"; \
+			break; \
+		fi; \
+		echo "Waiting for MySQL... ($$i/30)"; \
+		sleep 2; \
+	done
+	@echo "Ensuring database 'app_app' exists..."
+	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS app_app;" 2>/dev/null || true
+	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "CREATE USER IF NOT EXISTS 'app_user'@'%' IDENTIFIED BY 'app_password';" 2>/dev/null || true
+	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "GRANT ALL PRIVILEGES ON app_app.* TO 'app_user'@'%'; FLUSH PRIVILEGES;" 2>/dev/null || true
 	@echo "Installing Laravel backend dependencies in Docker container..."
 	cd backend && docker compose exec -T app composer install || true
 	@echo "Clearing Laravel caches and regenerating autoloader..."
 	cd backend && docker compose exec -T app composer dump-autoload -o || true
-	cd backend && docker compose exec -T app php artisan optimize:clear || true
+	cd backend && docker compose exec -T app php artisan config:clear || true
+	cd backend && docker compose exec -T app php artisan route:clear || true
+	cd backend && docker compose exec -T app php artisan view:clear || true
 	cd backend && docker compose exec -T app php artisan package:discover || true
 	@echo "Running database migrations and seeding..."
 	@$(MAKE) migrate
+	@echo "Clearing all caches after migrations..."
+	cd backend && docker compose exec -T app php artisan optimize:clear || true
 	@echo "Detecting environment..."
 	@if [ -n "$$DEVELOPMENT_MODE" ] && [ "$$DEVELOPMENT_MODE" = "true" ]; then \
 		echo "Development mode explicitly enabled - starting with hot reloading..."; \
@@ -106,12 +121,76 @@ setup-backend:
 			echo "Creating .env file from .env.example..."; \
 			cp backend/.env.example backend/.env; \
 			echo "Updating database configuration for Docker..."; \
-			sed -i '' 's/DB_CONNECTION=sqlite/DB_CONNECTION=mysql/' backend/.env; \
-			sed -i '' 's/# DB_HOST=127.0.0.1/DB_HOST=mysql/' backend/.env; \
-			sed -i '' 's/# DB_PORT=3306/DB_PORT=3306/' backend/.env; \
-			sed -i '' 's/# DB_DATABASE=laravel/DB_DATABASE=byu_590r_app/' backend/.env; \
-			sed -i '' 's/# DB_USERNAME=root/DB_USERNAME=byu_user/' backend/.env; \
-			sed -i '' 's/# DB_PASSWORD=/DB_PASSWORD=byu_password/' backend/.env; \
+			if grep -q "^DB_CONNECTION=" backend/.env; then \
+				sed -i '' 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' backend/.env; \
+			else \
+				echo "DB_CONNECTION=mysql" >> backend/.env; \
+			fi; \
+			if grep -q "^DB_HOST=" backend/.env; then \
+				sed -i '' 's/^DB_HOST=.*/DB_HOST=mysql/' backend/.env; \
+			else \
+				sed -i '' 's/# DB_HOST=127.0.0.1/DB_HOST=mysql/' backend/.env || echo "DB_HOST=mysql" >> backend/.env; \
+			fi; \
+			if grep -q "^DB_PORT=" backend/.env; then \
+				sed -i '' 's/^DB_PORT=.*/DB_PORT=3306/' backend/.env; \
+			else \
+				sed -i '' 's/# DB_PORT=3306/DB_PORT=3306/' backend/.env || echo "DB_PORT=3306" >> backend/.env; \
+			fi; \
+			if grep -q "^DB_DATABASE=" backend/.env; then \
+				sed -i '' 's/^DB_DATABASE=.*/DB_DATABASE=app_app/' backend/.env; \
+			else \
+				sed -i '' 's/# DB_DATABASE=laravel/DB_DATABASE=app_app/' backend/.env || echo "DB_DATABASE=app_app" >> backend/.env; \
+			fi; \
+			if grep -q "^DB_USERNAME=" backend/.env; then \
+				sed -i '' 's/^DB_USERNAME=.*/DB_USERNAME=app_user/' backend/.env; \
+			else \
+				sed -i '' 's/# DB_USERNAME=root/DB_USERNAME=app_user/' backend/.env || echo "DB_USERNAME=app_user" >> backend/.env; \
+			fi; \
+			if grep -q "^DB_PASSWORD=" backend/.env; then \
+				sed -i '' 's/^DB_PASSWORD=.*/DB_PASSWORD=app_password/' backend/.env; \
+			else \
+				sed -i '' 's/# DB_PASSWORD=/DB_PASSWORD=app_password/' backend/.env || echo "DB_PASSWORD=app_password" >> backend/.env; \
+			fi; \
+			echo ""; \
+			echo "==============================================="; \
+			echo "Mail Configuration (REQUIRED)"; \
+			echo "==============================================="; \
+			echo "Please enter your MAIL_HOST:"; \
+			read -r mail_host; \
+			sed -i '' '/^MAIL_HOST=/d' backend/.env; \
+			echo "MAIL_HOST=$$mail_host" >> backend/.env; \
+			echo "Please enter your MAIL_PORT:"; \
+			read -r mail_port; \
+			sed -i '' '/^MAIL_PORT=/d' backend/.env; \
+			echo "MAIL_PORT=$$mail_port" >> backend/.env; \
+			echo "Please enter your MAIL_USERNAME:"; \
+			read -r mail_username; \
+			sed -i '' '/^MAIL_USERNAME=/d' backend/.env; \
+			echo "MAIL_USERNAME=$$mail_username" >> backend/.env; \
+			echo "Please enter your MAIL_PASSWORD:"; \
+			read -r mail_password; \
+			sed -i '' '/^MAIL_PASSWORD=/d' backend/.env; \
+			echo "MAIL_PASSWORD=$$mail_password" >> backend/.env; \
+			echo ""; \
+			echo "==============================================="; \
+			echo "AWS Configuration (REQUIRED)"; \
+			echo "==============================================="; \
+			echo "Please enter your AWS_ACCESS_KEY_ID:"; \
+			read -r aws_access_key_id; \
+			sed -i '' '/^AWS_ACCESS_KEY_ID=/d' backend/.env; \
+			echo "AWS_ACCESS_KEY_ID=$$aws_access_key_id" >> backend/.env; \
+			echo "Please enter your AWS_SECRET_ACCESS_KEY:"; \
+			read -r aws_secret_access_key; \
+			sed -i '' '/^AWS_SECRET_ACCESS_KEY=/d' backend/.env; \
+			echo "AWS_SECRET_ACCESS_KEY=$$aws_secret_access_key" >> backend/.env; \
+			echo "Please enter your AWS_DEFAULT_REGION:"; \
+			read -r aws_default_region; \
+			sed -i '' '/^AWS_DEFAULT_REGION=/d' backend/.env; \
+			echo "AWS_DEFAULT_REGION=$$aws_default_region" >> backend/.env; \
+			echo "Please enter your S3_BUCKET:"; \
+			read -r s3_bucket; \
+			sed -i '' '/^S3_BUCKET=/d' backend/.env; \
+			echo "S3_BUCKET=$$s3_bucket" >> backend/.env; \
 			echo ""; \
 			echo "==============================================="; \
 			echo "OpenAI API Key is OPTIONAL for this project"; \
@@ -135,7 +214,37 @@ setup-backend:
 			exit 1; \
 		fi; \
 	else \
-		echo ".env file found. Checking if APP_KEY is set..."; \
+		echo ".env file found. Ensuring database configuration matches Docker setup..."; \
+		if grep -q "^DB_CONNECTION=" backend/.env; then \
+			sed -i '' 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' backend/.env; \
+		else \
+			echo "DB_CONNECTION=mysql" >> backend/.env; \
+		fi; \
+		if grep -q "^DB_HOST=" backend/.env; then \
+			sed -i '' 's/^DB_HOST=.*/DB_HOST=mysql/' backend/.env; \
+		else \
+			echo "DB_HOST=mysql" >> backend/.env; \
+		fi; \
+		if grep -q "^DB_PORT=" backend/.env; then \
+			sed -i '' 's/^DB_PORT=.*/DB_PORT=3306/' backend/.env; \
+		else \
+			echo "DB_PORT=3306" >> backend/.env; \
+		fi; \
+		if grep -q "^DB_DATABASE=" backend/.env; then \
+			sed -i '' 's/^DB_DATABASE=.*/DB_DATABASE=app_app/' backend/.env; \
+		else \
+			echo "DB_DATABASE=app_app" >> backend/.env; \
+		fi; \
+		if grep -q "^DB_USERNAME=" backend/.env; then \
+			sed -i '' 's/^DB_USERNAME=.*/DB_USERNAME=app_user/' backend/.env; \
+		else \
+			echo "DB_USERNAME=app_user" >> backend/.env; \
+		fi; \
+		if grep -q "^DB_PASSWORD=" backend/.env; then \
+			sed -i '' 's/^DB_PASSWORD=.*/DB_PASSWORD=app_password/' backend/.env; \
+		else \
+			echo "DB_PASSWORD=app_password" >> backend/.env; \
+		fi; \
 		if ! grep -q "APP_KEY=base64:" backend/.env; then \
 			echo "Generating application key..."; \
 			cd backend && php artisan key:generate; \
@@ -145,13 +254,19 @@ setup-backend:
 # Run database migrations
 migrate:
 	@echo "Running database migrations..."
-	@echo "Waiting for database connection..."
-	@for i in $$(seq 1 30); do \
+	@echo "Clearing config cache to ensure latest database settings are used..."
+	cd backend && docker compose exec -T app php artisan config:clear 2>/dev/null || true
+	@echo "Checking database connection..."
+	@for i in $$(seq 1 10); do \
 		if docker compose -f backend/docker-compose.yml exec -T app php artisan migrate:status >/dev/null 2>&1; then \
 			echo "Database connection established!"; \
 			break; \
 		fi; \
-		echo "Waiting for database... ($$i/30)"; \
+		if [ $$i -eq 10 ]; then \
+			echo "ERROR: Database connection failed after 20 seconds. Please check MySQL container."; \
+			exit 1; \
+		fi; \
+		echo "Waiting for database... ($$i/10)"; \
 		sleep 2; \
 	done
 	@echo "Running migrations and seeding..."
