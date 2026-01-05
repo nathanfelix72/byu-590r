@@ -290,9 +290,6 @@ jobs:
             sudo chmod -R 775 /var/www/html/api/storage/framework/views
             sudo chmod -R 775 /var/www/html/api/storage/app
             
-            # Run database migrations fresh with seeding
-            php artisan migrate:fresh --seed --force
-            
             # Configure Laravel for production (skip config cache to avoid APP_KEY issues)
             php artisan route:cache
             php artisan view:cache
@@ -346,9 +343,67 @@ jobs:
             curl -f http://localhost/ || echo "Frontend not responding"
           EOF
 
+  run-migrations:
+    name: Run Database Migrations
+    needs: [deploy-to-ec2]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Run Migrations
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /var/www/html/api
+            
+            # Check if this is the first migration run
+            # If migrate:status fails or returns no ran migrations, it's the first run
+            set +e
+            MIGRATE_STATUS_OUTPUT=$(php artisan migrate:status 2>&1)
+            MIGRATE_STATUS_EXIT=$?
+            set -e
+            
+            IS_FIRST_RUN=false
+            
+            if [ $MIGRATE_STATUS_EXIT -ne 0 ]; then
+              # Command failed - likely first run (migrations table doesn't exist)
+              IS_FIRST_RUN=true
+              echo "First migration run detected (migrations table doesn't exist). Will seed database."
+            else
+              # Count how many migrations have been run
+              RAN_MIGRATIONS=$(echo "$MIGRATE_STATUS_OUTPUT" | grep -c "Ran" || echo "0")
+              
+              if [ "$RAN_MIGRATIONS" -eq 0 ]; then
+                IS_FIRST_RUN=true
+                echo "First migration run detected (no migrations have been run). Will seed database."
+              fi
+            fi
+            
+            # Check if there are pending migrations
+            PENDING_MIGRATIONS=$(php artisan migrate:status --pending 2>/dev/null | grep -c "Pending" || echo "0")
+            
+            if [ "$PENDING_MIGRATIONS" -gt 0 ] || [ "$IS_FIRST_RUN" = "true" ]; then
+              if [ "$IS_FIRST_RUN" = "true" ]; then
+                echo "Running first-time migrations with seeding..."
+                php artisan migrate --force --seed
+              else
+                echo "Found $PENDING_MIGRATIONS pending migration(s). Running migrations (no seeding)..."
+                php artisan migrate --force
+              fi
+              
+              echo "Migrations completed successfully"
+            else
+              echo "No pending migrations. Database is up to date."
+            fi
+          EOF
+
   deploy-complete:
     name: Deploy Complete
-    needs: [deploy-to-ec2]
+    needs: [run-migrations]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
