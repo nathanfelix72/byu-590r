@@ -536,10 +536,56 @@ jobs:
             
             # Verify Apache is listening on port 4444
             echo "=== Verifying Apache status ==="
-            if sudo netstat -tlnp | grep -q ":4444" || sudo ss -tlnp | grep -q ":4444"; then
+            LISTEN_CHECK=$(sudo netstat -tlnp 2>/dev/null | grep ":4444" || sudo ss -tlnp 2>/dev/null | grep ":4444" || echo "")
+            if [ -n "$LISTEN_CHECK" ]; then
               echo "✓ Apache is listening on port 4444"
+              echo "Listening details: $LISTEN_CHECK"
+              # Check if it's listening on all interfaces (0.0.0.0) or just localhost
+              if echo "$LISTEN_CHECK" | grep -q "0.0.0.0:4444\|:::4444"; then
+                echo "✓ Apache is listening on all interfaces (accessible from external)"
+              elif echo "$LISTEN_CHECK" | grep -q "127.0.0.1:4444"; then
+                echo "✗ WARNING: Apache is only listening on localhost (127.0.0.1), not accessible externally!"
+              fi
             else
               echo "✗ WARNING: Apache may not be listening on port 4444"
+            fi
+            
+            # Check UFW firewall status
+            echo "=== Checking firewall (UFW) status ==="
+            if command -v ufw >/dev/null 2>&1; then
+              UFW_STATUS=$(sudo ufw status | head -1)
+              echo "UFW Status: $UFW_STATUS"
+              if echo "$UFW_STATUS" | grep -q "active"; then
+                echo "Checking if port 4444 is allowed in UFW:"
+                sudo ufw status | grep "4444" || echo "✗ Port 4444 not found in UFW rules - may need to allow it"
+                echo "To allow port 4444, run: sudo ufw allow 4444/tcp"
+              fi
+            else
+              echo "UFW not installed (this is OK)"
+            fi
+            
+            # Check iptables if UFW isn't managing it
+            echo "=== Checking iptables ==="
+            if sudo iptables -L -n | grep -q "4444"; then
+              echo "iptables rules for port 4444:"
+              sudo iptables -L -n | grep "4444"
+            else
+              echo "No specific iptables rules found for port 4444"
+            fi
+            
+            # Test external connectivity
+            echo "=== Testing external connectivity ==="
+            PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "unknown")
+            echo "Public IP: $PUBLIC_IP"
+            echo "Testing if port 4444 is accessible externally (may take a moment)..."
+            # Use nc (netcat) if available, or just curl
+            if command -v nc >/dev/null 2>&1; then
+              if timeout 3 bash -c "echo > /dev/tcp/$PUBLIC_IP/4444" 2>/dev/null; then
+                echo "✓ Port 4444 is accessible externally"
+              else
+                echo "✗ Port 4444 does not appear to be accessible externally"
+                echo "This could be a security group or firewall issue"
+              fi
             fi
             
             # Test PHP processing
