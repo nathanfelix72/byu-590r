@@ -196,6 +196,8 @@ jobs:
 
       - name: Deploy frontend
         run: |
+          # Inject Terraform-generated EC2 host into production environment (from GitHub secret EC2_HOST)
+          sed -i "s|__EC2_HOST__|${{ secrets.EC2_HOST }}|g" web-app/src/environments/environment.prod.ts
           cd web-app
           npm install
           npm run build

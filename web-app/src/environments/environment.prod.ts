@@ -1,4 +1,5 @@
+// apiUrl host is replaced at deploy time from GitHub Actions secret EC2_HOST (Terraform output)
 export const environment = {
   production: true,
-  apiUrl: 'http://184.169.200.114:4444/api/',
+  apiUrl: 'http://__EC2_HOST__:4444/api/',
 };
