@@ -73,7 +73,6 @@ This is required because the production Angular app makes direct API calls (no p
 #### AWS IAM Setup
 
 1. **Create IAM User**:
-
    - Go to AWS Console → IAM → Users → Create User
    - Username: `byu-590r-deploy`
    - Attach policies directly
@@ -125,7 +124,6 @@ This is required because the production Angular app makes direct API calls (no p
    ```
 
 3. **Generate Access Keys**:
-
    - Go to IAM → Users → `byu-590r-deploy` → Security credentials
    - Create access key → Command Line Interface (CLI)
    - Download CSV file
@@ -145,26 +143,22 @@ This is required because the production Angular app makes direct API calls (no p
 #### OpenAI API Setup (Optional)
 
 1. **Create OpenAI Account**:
-
    - Go to [platform.openai.com](https://platform.openai.com)
    - Sign up or log in to your account
 
 2. **Add Credits/Billing**:
-
    - Go to Billing → Payment methods
    - Add a credit card or purchase credits
    - Minimum: $5 credit for testing
    - Recommended: $10-20 for development
 
 3. **Generate API Key**:
-
    - Go to API Keys section in your OpenAI dashboard
    - Click "Create new secret key"
    - Name: `byu-590r-project`
    - Copy the key (starts with `sk-`)
 
 4. **Add to GitHub Secrets**:
-
    - Repository → Settings → Secrets and variables → Actions
    - Add `OPENAI_API_KEY` with your generated key
 
