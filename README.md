@@ -1,4 +1,4 @@
-# BYU 590R Monorepo
+# BYU 590R Monorepo 
 
 Laravel backend + Angular frontend with AWS EC2 deployment.
 
@@ -28,12 +28,12 @@ chmod +x setup-ec2-server.sh
 
 1. Open `web-app/src/environments/environment.prod.ts`
 2. Update the `apiUrl` to use your new EC2 IP address:
-   ```typescript
+  ```typescript
    export const environment = {
    	production: true,
    	apiUrl: "http://YOUR_NEW_EC2_IP:4444/api/",
    };
-   ```
+  ```
 3. Commit and push the change - the frontend will be rebuilt and redeployed automatically
 
 This is required because the production Angular app makes direct API calls (no proxy), so it needs the full URL with the correct IP address.
@@ -73,14 +73,11 @@ This is required because the production Angular app makes direct API calls (no p
 #### AWS IAM Setup
 
 1. **Create IAM User**:
-
-   - Go to AWS Console → IAM → Users → Create User
-   - Username: `byu-590r-deploy`
-   - Attach policies directly
-
+  - Go to AWS Console → IAM → Users → Create User
+  - Username: `byu-590r-deploy`
+  - Attach policies directly
 2. **Required Policies**:
-
-   ```json
+  ```json
    {
    	"Version": "2012-10-17",
    	"Statement": [
@@ -122,57 +119,44 @@ This is required because the production Angular app makes direct API calls (no p
    		}
    	]
    }
-   ```
-
+  ```
 3. **Generate Access Keys**:
-
-   - Go to IAM → Users → `byu-590r-deploy` → Security credentials
-   - Create access key → Command Line Interface (CLI)
-   - Download CSV file
-
+  - Go to IAM → Users → `byu-590r-deploy` → Security credentials
+  - Create access key → Command Line Interface (CLI)
+  - Download CSV file
 4. **Configure Local AWS CLI**:
-
-   ```bash
+  ```bash
    aws configure
    # Enter Access Key ID, Secret Access Key, Region (us-west-1), Output format (json)
-   ```
-
+  ```
 5. **Add to GitHub Secrets**:
-   - Repository → Settings → Secrets and variables → Actions
-   - Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from CSV file
-   - **Important**: Also add `EC2_HOST` and `S3_BUCKET` values from setup script output
+  - Repository → Settings → Secrets and variables → Actions
+  - Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from CSV file
+  - **Important**: Also add `EC2_HOST` and `S3_BUCKET` values from setup script output
 
 #### OpenAI API Setup (Optional)
 
 1. **Create OpenAI Account**:
-
-   - Go to [platform.openai.com](https://platform.openai.com)
-   - Sign up or log in to your account
-
+  - Go to [platform.openai.com](https://platform.openai.com)
+  - Sign up or log in to your account
 2. **Add Credits/Billing**:
-
-   - Go to Billing → Payment methods
-   - Add a credit card or purchase credits
-   - Minimum: $5 credit for testing
-   - Recommended: $10-20 for development
-
+  - Go to Billing → Payment methods
+  - Add a credit card or purchase credits
+  - Minimum: $5 credit for testing
+  - Recommended: $10-20 for development
 3. **Generate API Key**:
-
-   - Go to API Keys section in your OpenAI dashboard
-   - Click "Create new secret key"
-   - Name: `byu-590r-project`
-   - Copy the key (starts with `sk-`)
-
+  - Go to API Keys section in your OpenAI dashboard
+  - Click "Create new secret key"
+  - Name: `byu-590r-project`
+  - Copy the key (starts with `sk-`)
 4. **Add to GitHub Secrets**:
-
-   - Repository → Settings → Secrets and variables → Actions
-   - Add `OPENAI_API_KEY` with your generated key
-
+  - Repository → Settings → Secrets and variables → Actions
+  - Add `OPENAI_API_KEY` with your generated key
 5. **Add to Local Environment** (optional):
-   ```bash
+  ```bash
    # Add to backend/.env file
    OPENAI_API_KEY=sk-your-key-here
-   ```
+  ```
 
 ### 3. Deploy
 
@@ -199,14 +183,11 @@ cd devops/bash
 ### Setup Environment
 
 1. **Copy environment file**:
-
-   ```bash
+  ```bash
    cp backend/.env.example backend/.env
-   ```
-
+  ```
 2. **Configure database settings** (optional - Docker handles this):
-
-   ```bash
+  ```bash
    # Edit backend/.env if needed
    DB_CONNECTION=mysql
    DB_HOST=mysql
@@ -214,15 +195,14 @@ cd devops/bash
    DB_DATABASE=byu_590r_app
    DB_USERNAME=byu_user
    DB_PASSWORD=byu_password
-   ```
-
+  ```
 3. **Start development environment**:
-   ```bash
+  ```bash
    make start
-   ```
+  ```
 
-- Frontend: http://localhost:4200
-- Backend API: http://localhost:8000
+- Frontend: [http://localhost:4200](http://localhost:4200)
+- Backend API: [http://localhost:8000](http://localhost:8000)
 
 ## Credits
 
