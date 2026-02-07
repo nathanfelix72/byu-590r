@@ -192,7 +192,7 @@ jobs:
 
       - name: Migrate and restart backend
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan migrate --force && php artisan migrate --seed --force 2>/dev/null || true && sudo systemctl restart apache2"
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan migrate --force && php artisan migrate --seed --force && sudo systemctl restart apache2"
 
       - name: Deploy frontend
         run: |
