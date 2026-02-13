@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   FormBuilder,
   FormGroup,
@@ -14,7 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
@@ -29,7 +30,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatDialogModule,
+    MatTabsModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
@@ -41,8 +42,8 @@ export class LoginComponent {
   private authStore = inject(AuthStore);
   private router = inject(Router);
   private fb = inject(FormBuilder);
-  private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private sanitizer = inject(DomSanitizer);
 
   loginForm: FormGroup;
   registerForm: FormGroup;
@@ -50,12 +51,24 @@ export class LoginComponent {
 
   isLoading = signal(false);
   errorMsg = signal('');
-  passwordResetDialog = signal(false);
-  registerDialog = signal(false);
+  selectedTabIndex = 0; // 0 = Login, 1 = Forgot Password, 2 = Create Account
   submitForgotPasswordLoading = signal(false);
   registerFormIsLoading = signal(false);
-
+  
+  // Array for particle animation
+  particles = Array(10).fill(0).map((_, i) => i);
+  
+  // Vimeo video ID from the embed URL
+  vimeoVideoId = '153749651';
+  
+  // Cache the sanitized URL to prevent iframe reload on change detection
+  vimeoEmbedUrl: SafeResourceUrl;
+  
   constructor() {
+    // Initialize the Vimeo embed URL once in constructor to prevent reloads
+    const url = `https://player.vimeo.com/video/${this.vimeoVideoId}?autoplay=1&loop=1&muted=1&background=1&controls=0&responsive=1`;
+    this.vimeoEmbedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    
     this.loginForm = this.fb.group({
       email: [
         '',
@@ -97,6 +110,11 @@ export class LoginComponent {
 
   submitLogin(): void {
     if (!this.loginForm.valid) {
+      // Mark all fields as touched to show validation errors
+      Object.keys(this.loginForm.controls).forEach(key => {
+        this.loginForm.get(key)?.markAsTouched();
+      });
+      this.errorMsg.set('Please fill in all required fields correctly.');
       return;
     }
 
@@ -140,7 +158,9 @@ export class LoginComponent {
             }
           );
           this.submitForgotPasswordLoading.set(false);
-          this.passwordResetDialog.set(false);
+          // Switch back to login tab after successful submission
+          this.selectedTabIndex = 0;
+          this.forgotPasswordForm.reset();
         },
         error: () => {
           this.submitForgotPasswordLoading.set(false);
@@ -162,7 +182,9 @@ export class LoginComponent {
           verticalPosition: 'top',
         });
         this.registerFormIsLoading.set(false);
-        this.registerDialog.set(false);
+        // Switch to login tab after successful registration
+        this.selectedTabIndex = 0;
+        this.registerForm.reset();
       },
       error: () => {
         this.snackBar.open('Error! Registration failed.', 'Close', {

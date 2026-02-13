@@ -1,138 +1,229 @@
 <div class="login-page-content">
+  <!-- Background Video - Vimeo Embed -->
+  <div class="background-video-container">
+    <iframe 
+      class="background-video-iframe"
+      [src]="vimeoEmbedUrl" 
+      frameborder="0" 
+      allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+      allowfullscreen
+      title="Background Video"
+      loading="eager">
+    </iframe>
+  </div>
+  
+  <!-- Fallback: Local video (if you have one) -->
+  <video class="background-video-fallback" autoplay muted loop playsinline *ngIf="false">
+    <source src="/videos/background.mp4" type="video/mp4">
+  </video>
+  
+  <!-- Animated Background Overlay -->
+  <div class="animated-background">
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+    <div class="particles">
+      <div class="particle" *ngFor="let i of particles"></div>
+    </div>
+  </div>
+
+  <!-- Main Login Card with Tabs -->
   <mat-card class="login-box">
-    <mat-card-header>
-      <mat-card-title>Login Here</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <form [formGroup]="loginForm" (ngSubmit)="submitLogin()">
-        <div class="input-container">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" />
-            @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
-              <mat-error>Email is required and must be valid</mat-error>
-            }
-          </mat-form-field>
+    <div class="login-box-inner">
+      <!-- Tabs Navigation -->
+      <mat-tab-group [(selectedIndex)]="selectedTabIndex" class="auth-tabs" animationDuration="300ms">
+        <!-- Login Tab -->
+        <mat-tab label="Login">
+          <div class="tab-content">
+            <div class="tab-header">
+              <div class="logo-container">
+                <div class="logo-icon">
+                  <mat-icon>lock</mat-icon>
+                </div>
+              </div>
+              <h2 class="tab-title">Welcome Back</h2>
+              <p class="tab-subtitle">Sign in to continue to your account</p>
+            </div>
+            
+            <form [formGroup]="loginForm" (ngSubmit)="submitLogin()" class="auth-form">
+              <div class="input-container">
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">email</mat-icon>
+                    Email Address
+                  </mat-label>
+                  <input matInput type="email" formControlName="email" placeholder="Enter your email" />
+                  @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
+                    <mat-error>
+                      <mat-icon>error_outline</mat-icon>
+                      Email is required and must be valid
+                    </mat-error>
+                  }
+                </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Password</mat-label>
-            <input matInput type="password" formControlName="password" />
-            @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
-              <mat-error>Password is required and must be at least 8 characters</mat-error>
-            }
-          </mat-form-field>
-        </div>
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">lock</mat-icon>
+                    Password
+                  </mat-label>
+                  <input matInput type="password" formControlName="password" placeholder="Enter your password" />
+                  @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+                    <mat-error>
+                      <mat-icon>error_outline</mat-icon>
+                      Password is required and must be at least 8 characters
+                    </mat-error>
+                  }
+                </mat-form-field>
+              </div>
 
-        @if (errorMsg()) {
-          <mat-card class="alert alert-danger" (click)="errorMsg.set('')">
-            <mat-card-content>{{ errorMsg() }}</mat-card-content>
-          </mat-card>
-        }
-      </form>
-    </mat-card-content>
-    <mat-card-actions class="button-group">
-      <button mat-raised-button color="primary" type="submit" [disabled]="!loginForm.valid || isLoading()" (click)="submitLogin()">
-        @if (isLoading()) {
-          <mat-spinner diameter="20"></mat-spinner>
-          <span>Loading...</span>
-        } @else {
-          <span>Login Here</span>
-        }
-      </button>
-      <button mat-button (click)="passwordResetDialog.set(true)">Forgot Password</button>
-      <button mat-button (click)="registerDialog.set(true)">Register</button>
-    </mat-card-actions>
+              @if (errorMsg()) {
+                <div class="alert alert-danger" (click)="errorMsg.set('')">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ errorMsg() }}</span>
+                  <mat-icon class="close-icon">close</mat-icon>
+                </div>
+              }
+
+              <div class="form-actions">
+                <button 
+                  mat-raised-button 
+                  class="submit-button" 
+                  type="submit" 
+                  [class.loading]="isLoading()"
+                  (click)="submitLogin()">
+                  @if (isLoading()) {
+                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                    <span>Signing In...</span>
+                  } @else {
+                    <mat-icon>login</mat-icon>
+                    <span>Sign In</span>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </mat-tab>
+
+        <!-- Forgot Password Tab -->
+        <mat-tab label="Forgot Password">
+          <div class="tab-content">
+            <div class="tab-header">
+              <div class="logo-container">
+                <div class="logo-icon">
+                  <mat-icon>lock_reset</mat-icon>
+                </div>
+              </div>
+              <h2 class="tab-title">Reset Password</h2>
+              <p class="tab-subtitle">Enter your email address and we'll send you a link to reset your password.</p>
+            </div>
+            
+            <form [formGroup]="forgotPasswordForm" class="auth-form">
+              <div class="input-container">
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">email</mat-icon>
+                    Email Address
+                  </mat-label>
+                  <input matInput type="email" formControlName="email" placeholder="your.email@example.com" />
+                </mat-form-field>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  mat-raised-button
+                  class="submit-button"
+                  [class.loading]="submitForgotPasswordLoading()"
+                  [disabled]="!forgotPasswordForm.valid || submitForgotPasswordLoading()"
+                  (click)="submitForgotPassword()">
+                  @if (submitForgotPasswordLoading()) {
+                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                    <span>Sending...</span>
+                  } @else {
+                    <mat-icon>send</mat-icon>
+                    <span>Send Reset Link</span>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </mat-tab>
+
+        <!-- Register Tab -->
+        <mat-tab label="Create Account">
+          <div class="tab-content">
+            <div class="tab-header">
+              <div class="logo-container">
+                <div class="logo-icon">
+                  <mat-icon>person_add</mat-icon>
+                </div>
+              </div>
+              <h2 class="tab-title">Create Account</h2>
+              <p class="tab-subtitle">Join us today! Fill in your details to create your account.</p>
+            </div>
+            
+            <form [formGroup]="registerForm" class="auth-form">
+              <div class="input-container">
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">person</mat-icon>
+                    Full Name *
+                  </mat-label>
+                  <input matInput type="text" formControlName="name" placeholder="John Doe" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">email</mat-icon>
+                    Email Address *
+                  </mat-label>
+                  <input matInput type="email" formControlName="email" placeholder="john.doe@example.com" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">lock</mat-icon>
+                    Password *
+                  </mat-label>
+                  <input matInput type="password" formControlName="password" placeholder="At least 8 characters" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">lock_outline</mat-icon>
+                    Confirm Password *
+                  </mat-label>
+                  <input matInput type="password" formControlName="c_password" placeholder="Re-enter your password" />
+                  @if (registerForm.get('c_password')?.hasError('passwordMismatch')) {
+                    <mat-error>
+                      <mat-icon>error_outline</mat-icon>
+                      The password confirmation does not match.
+                    </mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <small class="required-note">* indicates required field</small>
+
+              <div class="form-actions">
+                <button
+                  mat-raised-button
+                  class="submit-button"
+                  [class.loading]="registerFormIsLoading()"
+                  [disabled]="!registerForm.valid || registerFormIsLoading()"
+                  (click)="submitRegister()">
+                  @if (registerFormIsLoading()) {
+                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                    <span>Creating Account...</span>
+                  } @else {
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Create Account</span>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
   </mat-card>
-
-  @if (passwordResetDialog()) {
-    <div class="modal" (click)="passwordResetDialog.set(false)">
-      <div class="modal-dialog" (click)="$event.stopPropagation()">
-        <mat-card class="modal-content">
-          <mat-card-header>
-            <mat-card-title>Password Reset</mat-card-title>
-            <button mat-icon-button (click)="passwordResetDialog.set(false)">
-              <mat-icon>close</mat-icon>
-            </button>
-          </mat-card-header>
-          <mat-card-content>
-            <form [formGroup]="forgotPasswordForm">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Password Reset Email</mat-label>
-                <input matInput type="email" formControlName="email" />
-              </mat-form-field>
-            </form>
-          </mat-card-content>
-          <mat-card-actions>
-            <button mat-button (click)="passwordResetDialog.set(false)">Close</button>
-            <button
-              mat-raised-button
-              color="primary"
-              [disabled]="!forgotPasswordForm.valid || submitForgotPasswordLoading()"
-              (click)="submitForgotPassword()">
-              @if (submitForgotPasswordLoading()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                <span>Loading...</span>
-              } @else {
-                <span>Submit</span>
-              }
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </div>
-    </div>
-  }
-
-  @if (registerDialog()) {
-    <div class="modal" (click)="registerDialog.set(false)">
-      <div class="modal-dialog" (click)="$event.stopPropagation()">
-        <mat-card class="modal-content">
-          <mat-card-header>
-            <mat-card-title>Register a User</mat-card-title>
-            <button mat-icon-button (click)="registerDialog.set(false)">
-              <mat-icon>close</mat-icon>
-            </button>
-          </mat-card-header>
-          <mat-card-content>
-            <form [formGroup]="registerForm">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Full name*</mat-label>
-                <input matInput type="text" formControlName="name" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Email*</mat-label>
-                <input matInput type="email" formControlName="email" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Password*</mat-label>
-                <input matInput type="password" formControlName="password" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Password Confirmation*</mat-label>
-                <input matInput type="password" formControlName="c_password" />
-                @if (registerForm.get('c_password')?.hasError('passwordMismatch')) {
-                  <mat-error>The password confirmation does not match.</mat-error>
-                }
-              </mat-form-field>
-              <small>*indicates required field</small>
-            </form>
-          </mat-card-content>
-          <mat-card-actions>
-            <button mat-button (click)="registerDialog.set(false)">Close</button>
-            <button
-              mat-raised-button
-              color="primary"
-              [disabled]="!registerForm.valid || registerFormIsLoading()"
-              (click)="submitRegister()">
-              @if (registerFormIsLoading()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                <span>Loading...</span>
-              } @else {
-                <span>Save</span>
-              }
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </div>
-    </div>
-  }
 </div>

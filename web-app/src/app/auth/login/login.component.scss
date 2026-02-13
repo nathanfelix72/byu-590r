@@ -2,136 +2,715 @@
 @use '../../../assets/styles/spacing' as spacing;
 @use '../../../assets/styles/fonts' as fonts;
 
+// ============================================
+// ANIMATED BACKGROUND
+// ============================================
 .login-page-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.login-box {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: colors.$colors-charcoal;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-  row-gap: spacing.$spacing-medium-large;
-  padding: spacing.$spacing-medium-large;
-  border-radius: spacing.$border-radius-medium;
-}
-
-@media screen and (min-width: 769px) {
-  .login-box {
-    width: 750px;
-    height: 50vh;
-  }
-}
-
-@media screen and (min-width: 1200px) {
-  .login-box {
-    width: 500px;
-    height: unset;
-  }
-}
-
-.input-container {
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  row-gap: spacing.$spacing-medium;
-}
-
-.button-group {
-  width: 100%;
-  display: flex;
-  column-gap: spacing.$spacing-extra-small;
-  padding: spacing.$spacing-medium 0;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.alert {
-  cursor: pointer;
-  margin-top: spacing.$spacing-medium;
-}
-
-.alert-danger {
-  background-color: rgba(211, 47, 47, 0.15);
-  color: #ffcdd2;
-  border: 1px solid colors.$colors-error;
-  border-radius: spacing.$border-radius-small;
-  padding: spacing.$spacing-small spacing.$spacing-medium;
-}
-
-.modal {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  margin: 0;
+  padding: 0;
+}
+
+// ============================================
+// BACKGROUND VIDEO
+// ============================================
+.background-video-container {
+  position: fixed; // Use fixed instead of absolute to prevent re-rendering
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  z-index: 1000;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none; // Allow clicks to pass through
+  will-change: auto; // Prevent unnecessary repaints
+  transform: translateZ(0); // Force hardware acceleration
+  backface-visibility: hidden; // Prevent flickering
+}
+
+.background-video-iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(-50%, -50%) translateZ(0);
+  object-fit: cover;
+  opacity: 0.6; // Adjust opacity to blend with gradient overlay
+  border: none;
+  will-change: auto; // Prevent unnecessary repaints
+  backface-visibility: hidden; // Prevent flickering
+  -webkit-transform: translate(-50%, -50%) translateZ(0); // Safari support
+  
+  // Ensure video covers entire viewport
+  @media (min-aspect-ratio: 16/9) {
+    width: 100vw;
+    height: 56.25vw; // 16:9 aspect ratio
+    min-height: 100vh;
+  }
+  
+  @media (max-aspect-ratio: 16/9) {
+    width: 177.78vh; // 16:9 aspect ratio
+    height: 100vh;
+    min-width: 100vw;
+  }
+}
+
+.background-video-fallback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  z-index: -2;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  opacity: 0.6;
+  transition: opacity 0.5s ease;
+  
+  @media (min-aspect-ratio: 16/9) {
+    width: 100%;
+    height: auto;
+  }
+  
+  @media (max-aspect-ratio: 16/9) {
+    width: auto;
+    height: 100%;
+  }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1; // Behind login box but above video
+  background: rgba(0, 0, 0, 0.2); // Optional: darken overlay to make video less prominent
+}
+
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  animation: float 20s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.4) 100%);
+  top: -200px;
+  left: -200px;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(240, 147, 251, 0.8) 0%, rgba(79, 172, 254, 0.4) 100%);
+  bottom: -250px;
+  right: -250px;
+  animation-delay: 7s;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(0, 242, 254, 0.8) 0%, rgba(102, 126, 234, 0.4) 100%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 14s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: particleFloat 15s infinite ease-in-out;
+  
+  @for $i from 1 through 10 {
+    &:nth-child(#{$i}) {
+      left: random(100) * 1%;
+      top: random(100) * 1%;
+      animation-delay: random(15) * 0.1s;
+      animation-duration: (10 + random(10)) * 1s;
+    }
+  }
+}
+
+@keyframes particleFloat {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-100px) translateX(50px);
+    opacity: 0.8;
+  }
+}
+
+// ============================================
+// GLASSMORPHISM LOGIN CARD
+// ============================================
+.login-box {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  max-width: 450px;
+  margin: 2rem;
+  max-height: 90vh;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  animation: slideUp 0.6s ease-out;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  
+  // Custom scrollbar styling
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+      0 12px 40px 0 rgba(31, 38, 135, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-box-inner {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.logo-container {
   display: flex;
   justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.logo-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+  display: flex;
   align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+  
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: white;
+  }
 }
 
-.modal-dialog {
-  position: relative;
-  width: 90%;
-  max-width: 500px;
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
 }
 
-.modal-content {
-  background-color: colors.$colors-charcoal;
-  color: colors.$colors-white;
-  border-radius: spacing.$border-radius-medium;
+// ============================================
+// TABS STYLING
+// ============================================
+.auth-tabs {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  
+  ::ng-deep {
+    .mat-mdc-tab-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      flex-shrink: 0;
+    }
+    
+    .mat-mdc-tab-label {
+      color: rgba(255, 255, 255, 0.7) !important;
+      font-weight: 500;
+      opacity: 1 !important;
+      min-width: 120px;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        color: rgba(255, 255, 255, 0.9) !important;
+        background: rgba(255, 255, 255, 0.05);
+      }
+    }
+    
+    .mat-mdc-tab-label-active {
+      color: white !important;
+      font-weight: 600;
+    }
+    
+    .mdc-tab-indicator__content--underline {
+      border-color: white !important;
+      border-width: 2px !important;
+    }
+    
+    .mat-mdc-tab-body-wrapper {
+      padding: 0;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .mat-mdc-tab-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .mat-mdc-tab-body-content {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      flex: 1;
+      min-height: 0;
+      height: 100% !important;
+      
+      // Custom scrollbar styling
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      }
+    }
+  }
+}
+
+.tab-content {
+  padding: 1.5rem 2rem 2rem 2rem;
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  min-height: min-content;
+  height: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+}
+
+.tab-title {
+  color: white !important;
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  margin: 0.25rem 0 !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.5px;
+}
+
+.tab-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0 0;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: auto;
+  min-height: min-content;
+}
+
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+// ============================================
+// MODERN INPUT FIELDS
+// ============================================
+.modern-input {
+  .input-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+// ============================================
+// ALERT STYLING
+// ============================================
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: slideIn 0.3s ease-out;
+  
+  &:hover {
+    transform: translateX(5px);
+  }
+  
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+  
+  .close-icon {
+    margin-left: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.alert-danger {
+  background: rgba(211, 47, 47, 0.2);
+  border: 1px solid rgba(211, 47, 47, 0.4);
+  color: #ffcdd2;
+  backdrop-filter: blur(10px);
+  
+  mat-icon {
+    color: #ff5252;
+  }
+}
+
+// ============================================
+// FORM ACTIONS
+// ============================================
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+}
+
+.submit-button {
+  width: 100%;
+  height: 56px;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15)) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.25)) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  &.loading {
+    pointer-events: none;
+  }
+  
+  .button-spinner {
+    margin-right: 0.5rem;
+  }
+}
+
+
+.required-note {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
 }
 
 .full-width {
   width: 100%;
 }
 
+// ============================================
+// MATERIAL OVERRIDES
+// ============================================
 ::ng-deep {
   .mat-mdc-card {
-    background-color: colors.$colors-charcoal !important;
-    color: colors.$colors-white !important;
+    background-color: transparent !important;
+    color: white !important;
   }
   
   .mat-mdc-card-title,
   .mat-mdc-card-subtitle {
-    color: colors.$colors-white !important;
-    @include fonts.fonts-h3;
+    color: white !important;
   }
   
   .mat-mdc-form-field {
     .mat-mdc-text-field-wrapper {
-      background-color: colors.$colors-dark-grey;
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      backdrop-filter: blur(10px);
+      border-radius: 12px !important;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+      }
+      
+      &.mdc-text-field--focused {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+      }
     }
     
     .mat-mdc-form-field-label {
-      color: colors.$colors-white !important;
-      @include fonts.fonts-body;
+      color: rgba(255, 255, 255, 0.8) !important;
+      
+      &.mdc-floating-label--float-above {
+        color: rgba(255, 255, 255, 0.9) !important;
+      }
     }
     
     .mat-mdc-input-element {
-      color: colors.$colors-white !important;
-      @include fonts.fonts-body;
+      color: white !important;
+      caret-color: white;
+      
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
     }
     
     .mat-mdc-form-field-error {
-      color: colors.$colors-error !important;
-      @include fonts.fonts-caption;
+      color: #ff5252 !important;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+    
+    .mat-mdc-form-field-outline {
+      color: rgba(255, 255, 255, 0.3) !important;
+    }
+    
+    &.mat-focused .mat-mdc-form-field-outline-thick {
+      color: rgba(255, 255, 255, 0.6) !important;
     }
   }
   
   .mat-mdc-snack-bar-container {
-    background-color: colors.$colors-charcoal !important;
-    color: colors.$colors-white !important;
+    background-color: rgba(30, 30, 40, 0.95) !important;
+    color: white !important;
+    backdrop-filter: blur(20px);
+  }
+  
+  .mat-mdc-progress-spinner {
+    circle {
+      stroke: white !important;
+    }
+  }
+  
+}
+
+// ============================================
+// RESPONSIVE DESIGN
+// ============================================
+@media screen and (max-width: 768px) {
+  .login-box {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .tab-content {
+    padding: 1.5rem;
+  }
+  
+  .tab-title {
+    font-size: 1.75rem !important;
+  }
+  
+  ::ng-deep {
+    .auth-tabs {
+      .mat-mdc-tab-label {
+        min-width: 100px;
+        font-size: 0.9rem;
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .tab-content {
+    padding: 1.25rem 1rem;
+  }
+  
+  ::ng-deep {
+    .auth-tabs {
+      .mat-mdc-tab-label {
+        min-width: 80px;
+        font-size: 0.85rem;
+        padding: 0 12px;
+      }
+    }
   }
 }
