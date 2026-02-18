@@ -337,35 +337,42 @@ resource "aws_s3_bucket_public_access_block" "prod" {
   restrict_public_buckets = true
 }
 
-# Book images: same assets as devops/bash/upload-book-images.sh
-# Uploads from backend/public/assets/books into images/ in both dev and prod buckets.
+# Book images: upload from backend/public/assets/books to images/ in both dev and prod buckets.
+# Uses placeholder.jpg for any key whose file is missing so production always has all seeded image keys.
+# path.module/.. is repo root when this module lives at <repo>/terraform
 locals {
-  book_images_dir      = "${path.module}/../../${var.book_images_path}"
-  book_images_to_upload = toset([for f in var.book_images : f if fileexists("${path.module}/../../${var.book_images_path}/${f}")])
+  book_images_dir       = abspath("${path.module}/../${var.book_images_path}")
+  book_image_keys       = toset(var.book_images)
+  placeholder_path      = "${local.book_images_dir}/placeholder.jpg"
+  # For each key: use the real file if present, else the committed placeholder image
+  book_image_source = {
+    for f in local.book_image_keys : f =>
+    fileexists("${local.book_images_dir}/${f}") ? "${local.book_images_dir}/${f}" : local.placeholder_path
+  }
 }
 
 # Upload book images to dev bucket (images/hp1.jpeg, images/bom.jpg, etc.)
 resource "aws_s3_object" "dev_book_images" {
-  for_each = local.book_images_to_upload
+  for_each = local.book_image_keys
 
   bucket = aws_s3_bucket.dev.id
   key    = "images/${each.value}"
-  source = "${local.book_images_dir}/${each.value}"
+  source = local.book_image_source[each.value]
 
-  etag = filemd5("${local.book_images_dir}/${each.value}")
+  etag = filemd5(local.book_image_source[each.value])
 
   depends_on = [aws_s3_bucket.dev]
 }
 
 # Upload book images to prod bucket (images/hp1.jpeg, images/bom.jpg, etc.)
 resource "aws_s3_object" "prod_book_images" {
-  for_each = local.book_images_to_upload
+  for_each = local.book_image_keys
 
   bucket = aws_s3_bucket.prod.id
   key    = "images/${each.value}"
-  source = "${local.book_images_dir}/${each.value}"
+  source = local.book_image_source[each.value]
 
-  etag = filemd5("${local.book_images_dir}/${each.value}")
+  etag = filemd5(local.book_image_source[each.value])
 
   depends_on = [aws_s3_bucket.prod]
 }
