@@ -48,19 +48,29 @@ class BookController extends BaseController
         $book = new Book;
 
         if ($request->hasFile('file')) {
-            $extension = request()->file('file')->getClientOriginalExtension();
-            $image_name = time() . '_book_cover.' . $extension;
-            $path = $request->file('file')->storeAs(
-                'images',
-                $image_name,
-                's3'
-            );
-            Storage::disk('s3')->setVisibility($path, "public");
-            if (!$path) {
-                return $this->sendError($path, 'Book cover failed to upload!');
+            try {
+                $extension = request()->file('file')->getClientOriginalExtension();
+                $image_name = time() . '_book_cover.' . $extension;
+                $path = $request->file('file')->storeAs(
+                    'images',
+                    $image_name,
+                    's3'
+                );
+                if (! $path) {
+                    Log::error('Book cover upload failed: storeAs returned empty path');
+                    return $this->sendError('Book cover failed to upload!', [], 500);
+                }
+                try {
+                    Storage::disk('s3')->setVisibility($path, 'public');
+                } catch (\Throwable $e) {
+                    // Bucket may block public ACLs; object is still uploaded, use presigned URLs
+                    Log::warning('S3 setVisibility failed (non-fatal): ' . $e->getMessage());
+                }
+                $book->file = $path;
+            } catch (\Throwable $e) {
+                Log::error('Book cover upload failed: ' . $e->getMessage(), ['exception' => $e]);
+                return $this->sendError('Book cover failed to upload!', [], 500);
             }
-
-            $book->file = $path;
         }
 
         $book->name = $request['name'];
@@ -91,19 +101,28 @@ class BookController extends BaseController
         $book = Book::findOrFail($id);
 
         if ($request->hasFile('file')) {
-            $extension = request()->file('file')->getClientOriginalExtension();
-            $image_name = time() . '_book_cover.' . $extension;
-            $path = $request->file('file')->storeAs(
-                'images',
-                $image_name,
-                's3'
-            );
-            Storage::disk('s3')->setVisibility($path, "public");
-            if (!$path) {
-                return $this->sendError($path, 'Book cover failed to upload!');
+            try {
+                $extension = request()->file('file')->getClientOriginalExtension();
+                $image_name = time() . '_book_cover.' . $extension;
+                $path = $request->file('file')->storeAs(
+                    'images',
+                    $image_name,
+                    's3'
+                );
+                if (! $path) {
+                    Log::error('Book picture update failed: storeAs returned empty path');
+                    return $this->sendError('Book cover failed to upload!', [], 500);
+                }
+                try {
+                    Storage::disk('s3')->setVisibility($path, 'public');
+                } catch (\Throwable $e) {
+                    Log::warning('S3 setVisibility failed (non-fatal): ' . $e->getMessage());
+                }
+                $book->file = $path;
+            } catch (\Throwable $e) {
+                Log::error('Book picture update failed: ' . $e->getMessage(), ['exception' => $e]);
+                return $this->sendError('Book cover failed to upload!', [], 500);
             }
-
-            $book->file = $path;
         }
         $book->save();
 

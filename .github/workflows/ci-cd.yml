@@ -182,7 +182,9 @@ jobs:
             (grep -q '^DB_DATABASE=' .env && sed -i 's/^DB_DATABASE=.*/DB_DATABASE=${{ secrets.DB_DATABASE }}/' .env || echo 'DB_DATABASE=${{ secrets.DB_DATABASE }}' >> .env); \
             (grep -q '^DB_USERNAME=' .env && sed -i 's/^DB_USERNAME=.*/DB_USERNAME=${{ secrets.DB_USERNAME }}/' .env || echo 'DB_USERNAME=${{ secrets.DB_USERNAME }}' >> .env); \
             (grep -q '^DB_PASSWORD=' .env && sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=${{ secrets.DB_PASSWORD }}/' .env || echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env); \
+            (grep -q '^FILESYSTEM_DISK=' .env && sed -i 's/^FILESYSTEM_DISK=.*/FILESYSTEM_DISK=s3/' .env || echo 'FILESYSTEM_DISK=s3' >> .env); \
             (grep -q '^S3_BUCKET=' .env && sed -i 's|^S3_BUCKET=.*|S3_BUCKET=${{ secrets.S3_BUCKET }}|' .env || echo 'S3_BUCKET=${{ secrets.S3_BUCKET }}' >> .env); \
+            (grep -q '^S3_BUCKET_PROD=' .env && sed -i 's|^S3_BUCKET_PROD=.*|S3_BUCKET_PROD=${{ secrets.S3_BUCKET }}|' .env || echo 'S3_BUCKET_PROD=${{ secrets.S3_BUCKET }}' >> .env); \
             (grep -q '^AWS_ACCESS_KEY_ID=' .env && sed -i 's/^AWS_ACCESS_KEY_ID=.*/AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}/' .env || echo 'AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}' >> .env); \
             (grep -q '^AWS_SECRET_ACCESS_KEY=' .env && sed -i 's/^AWS_SECRET_ACCESS_KEY=.*/AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}/' .env || echo 'AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}' >> .env); \
             (grep -q '^AWS_DEFAULT_REGION=' .env && sed -i 's/^AWS_DEFAULT_REGION=.*/AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}/' .env || echo 'AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}' >> .env); \
@@ -192,7 +194,7 @@ jobs:
 
       - name: Migrate and restart backend
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan migrate --force && php artisan migrate --seed --force 2>/dev/null || true && sudo systemctl restart apache2"
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan config:clear && php artisan migrate --force && php artisan migrate --seed --force 2>/dev/null || true && sudo systemctl restart apache2"
 
       - name: Deploy frontend
         run: |
