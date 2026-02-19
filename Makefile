@@ -21,7 +21,7 @@ start:
 	@echo "Ensuring database 'app_app' exists..."
 	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS app_app;" 2>/dev/null || true
 	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "CREATE USER IF NOT EXISTS 'app_user'@'%' IDENTIFIED BY 'app_password';" 2>/dev/null || true
-	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "GRANT ALL PRIVILEGES ON app_app.* TO 'app_user'@'%'; FLUSH PRIVILEGES;" 2>/dev/null || true
+	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "GRANT ALL PRIVILEGES ON app_app.* TO 'app_user'@'%'; FLUSH PRIVILEGES';" 2>/dev/null || true
 	@echo "Using Laravel backend dependencies from local install (backend/vendor)..."
 	@echo "Clearing Laravel caches and regenerating autoloader..."
 	cd backend && docker compose exec -T app composer dump-autoload -o || true
@@ -63,7 +63,7 @@ start-dev:
 	cd web-app && npm install
 	@echo "Frontend will be available at: http://localhost:4200"
 	@echo "Backend API: http://localhost:8000"
-	@echo "Database: localhost:3306"
+	@echo "Database: localhost:3307"
 	@echo ""
 	@echo "Starting Angular dev server in background..."
 	cd web-app && npm start &
@@ -79,7 +79,7 @@ start-prod:
 	@echo "All services started!"
 	@echo "Frontend: http://localhost:3000"
 	@echo "Backend API: http://localhost:8000"
-	@echo "Database: localhost:3306"
+	@echo "Database: localhost:3307"
 
 # Run database migrations and seed; used by start
 migrate:
@@ -92,8 +92,8 @@ stop:
 	docker stop byu-590r-frontend || true
 	docker rm byu-590r-frontend || true
 	@echo "Stopping Angular dev server..."
-	pkill -f "ng serve" || true
-	pkill -f "npm start" || true
+	-pkill -f "ng serve" 2>/dev/null || true
+	-pkill -f "npm start" 2>/dev/null || true
 	@echo "All services stopped!"
 
 # Clean up everything
