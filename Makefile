@@ -12,20 +12,17 @@ start:
 	@echo "Starting Laravel backend with MySQL..."
 	cd backend && docker compose up -d
 	@echo "Waiting for database to be ready..."
-	@for i in $$(seq 1 30); do \
-		if docker compose -f backend/docker-compose.yml exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; then \
-			echo "MySQL is ready!"; \
-			break; \
+	@cd backend && mysql_ready=0 && for i in $$(seq 1 30); do \
+		if docker compose exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MySQL is ready!"; mysql_ready=1; break; \
 		fi; \
-		echo "Waiting for MySQL... ($$i/30)"; \
-		sleep 2; \
-	done
+		echo "Waiting for MySQL... ($$i/30)"; sleep 2; \
+	done && if [ $$mysql_ready -ne 1 ]; then echo "ERROR: MySQL did not become ready in time."; exit 1; fi
 	@echo "Ensuring database 'app_app' exists..."
-	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS app_app;" 2>/dev/null || true
-	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "CREATE USER IF NOT EXISTS 'app_user'@'%' IDENTIFIED BY 'app_password';" 2>/dev/null || true
-	@docker compose -f backend/docker-compose.yml exec -T mysql mysql -u root -prootpassword -e "GRANT ALL PRIVILEGES ON app_app.* TO 'app_user'@'%'; FLUSH PRIVILEGES;" 2>/dev/null || true
-	@echo "Installing Laravel backend dependencies in Docker container..."
-	cd backend && docker compose exec -T app composer install || true
+	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS app_app;" 2>/dev/null || true
+	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "CREATE USER IF NOT EXISTS 'app_user'@'%' IDENTIFIED BY 'app_password';" 2>/dev/null || true
+	@cd backend && docker compose exec -T mysql mysql -u root -prootpassword -e "GRANT ALL PRIVILEGES ON app_app.* TO 'app_user'@'%'; FLUSH PRIVILEGES;" 2>/dev/null || true
+	@echo "Using Laravel backend dependencies from local install (backend/vendor)..."
 	@echo "Clearing Laravel caches and regenerating autoloader..."
 	cd backend && docker compose exec -T app composer dump-autoload -o || true
 	cd backend && docker compose exec -T app php artisan config:clear || true
@@ -34,6 +31,8 @@ start:
 	cd backend && docker compose exec -T app php artisan package:discover || true
 	@echo "Running database migrations and seeding..."
 	@$(MAKE) migrate
+	@echo "Setting up demo book images for local storage..."
+	cd backend && docker compose exec -T app php artisan app:setup-demo-images
 	@echo "Clearing all caches after migrations..."
 	cd backend && docker compose exec -T app php artisan optimize:clear || true
 	@echo "Detecting environment..."
@@ -82,6 +81,10 @@ start-prod:
 	@echo "Backend API: http://localhost:8000"
 	@echo "Database: localhost:3306"
 
+# Run database migrations and seed; used by start
+migrate:
+	cd backend && docker compose exec -T app php artisan migrate --force --seed
+
 # Stop all services
 stop:
 	@echo "Stopping all services..."
@@ -101,316 +104,6 @@ clean: stop
 	docker system prune -f
 	@echo "Cleanup complete!"
 
-# Build frontend only
-build-frontend:
-	@echo "Building Angular frontend..."
-	cd web-app && npm run build
-
-# Build backend only
-build-backend:
-	@echo "Building Laravel backend..."
-	cd backend && docker compose build
-
-# Setup Laravel backend
-setup-backend:
-	@if [ ! -f backend/.env ]; then \
-		echo "No .env file found in backend directory."; \
-		echo "Do you wish to create one? (y/n)"; \
-		read -r response; \
-		if [ "$$response" = "y" ] || [ "$$response" = "Y" ]; then \
-			echo "Creating .env file from .env.example..."; \
-			cp backend/.env.example backend/.env; \
-			echo "Updating database configuration for Docker..."; \
-			if grep -q "^DB_CONNECTION=" backend/.env; then \
-				sed -i '' 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' backend/.env; \
-			else \
-				echo "DB_CONNECTION=mysql" >> backend/.env; \
-			fi; \
-			if grep -q "^DB_HOST=" backend/.env; then \
-				sed -i '' 's/^DB_HOST=.*/DB_HOST=mysql/' backend/.env; \
-			else \
-				sed -i '' 's/# DB_HOST=127.0.0.1/DB_HOST=mysql/' backend/.env || echo "DB_HOST=mysql" >> backend/.env; \
-			fi; \
-			if grep -q "^DB_PORT=" backend/.env; then \
-				sed -i '' 's/^DB_PORT=.*/DB_PORT=3306/' backend/.env; \
-			else \
-				sed -i '' 's/# DB_PORT=3306/DB_PORT=3306/' backend/.env || echo "DB_PORT=3306" >> backend/.env; \
-			fi; \
-			if grep -q "^DB_DATABASE=" backend/.env; then \
-				sed -i '' 's/^DB_DATABASE=.*/DB_DATABASE=app_app/' backend/.env; \
-			else \
-				sed -i '' 's/# DB_DATABASE=laravel/DB_DATABASE=app_app/' backend/.env || echo "DB_DATABASE=app_app" >> backend/.env; \
-			fi; \
-			if grep -q "^DB_USERNAME=" backend/.env; then \
-				sed -i '' 's/^DB_USERNAME=.*/DB_USERNAME=app_user/' backend/.env; \
-			else \
-				sed -i '' 's/# DB_USERNAME=root/DB_USERNAME=app_user/' backend/.env || echo "DB_USERNAME=app_user" >> backend/.env; \
-			fi; \
-			if grep -q "^DB_PASSWORD=" backend/.env; then \
-				sed -i '' 's/^DB_PASSWORD=.*/DB_PASSWORD=app_password/' backend/.env; \
-			else \
-				sed -i '' 's/# DB_PASSWORD=/DB_PASSWORD=app_password/' backend/.env || echo "DB_PASSWORD=app_password" >> backend/.env; \
-			fi; \
-			echo ""; \
-			echo "==============================================="; \
-			echo "Mail Configuration (REQUIRED)"; \
-			echo "==============================================="; \
-			echo "Please enter your MAIL_HOST:"; \
-			read -r mail_host; \
-			sed -i '' '/^MAIL_HOST=/d' backend/.env; \
-			echo "MAIL_HOST=$$mail_host" >> backend/.env; \
-			echo "Please enter your MAIL_PORT:"; \
-			read -r mail_port; \
-			sed -i '' '/^MAIL_PORT=/d' backend/.env; \
-			echo "MAIL_PORT=$$mail_port" >> backend/.env; \
-			echo "Please enter your MAIL_USERNAME:"; \
-			read -r mail_username; \
-			sed -i '' '/^MAIL_USERNAME=/d' backend/.env; \
-			echo "MAIL_USERNAME=$$mail_username" >> backend/.env; \
-			echo "Please enter your MAIL_PASSWORD:"; \
-			read -r mail_password; \
-			sed -i '' '/^MAIL_PASSWORD=/d' backend/.env; \
-			echo "MAIL_PASSWORD=$$mail_password" >> backend/.env; \
-			echo ""; \
-			echo "==============================================="; \
-			echo "AWS Configuration (REQUIRED)"; \
-			echo "==============================================="; \
-			echo "Please enter your AWS_ACCESS_KEY_ID:"; \
-			read -r aws_access_key_id; \
-			sed -i '' '/^AWS_ACCESS_KEY_ID=/d' backend/.env; \
-			echo "AWS_ACCESS_KEY_ID=$$aws_access_key_id" >> backend/.env; \
-			echo "Please enter your AWS_SECRET_ACCESS_KEY:"; \
-			read -r aws_secret_access_key; \
-			sed -i '' '/^AWS_SECRET_ACCESS_KEY=/d' backend/.env; \
-			echo "AWS_SECRET_ACCESS_KEY=$$aws_secret_access_key" >> backend/.env; \
-			echo "Please enter your AWS_DEFAULT_REGION:"; \
-			read -r aws_default_region; \
-			sed -i '' '/^AWS_DEFAULT_REGION=/d' backend/.env; \
-			echo "AWS_DEFAULT_REGION=$$aws_default_region" >> backend/.env; \
-			echo "Please enter your S3_BUCKET:"; \
-			read -r s3_bucket; \
-			sed -i '' '/^S3_BUCKET=/d' backend/.env; \
-			echo "S3_BUCKET=$$s3_bucket" >> backend/.env; \
-			echo ""; \
-			echo "==============================================="; \
-			echo "OpenAI API Key is OPTIONAL for this project"; \
-			echo "==============================================="; \
-			echo "Please enter your OpenAI API key (or press Enter to skip):"; \
-			read -r openai_key; \
-			if [ -n "$$openai_key" ]; then \
-				echo "Adding OpenAI API key to .env file..."; \
-				sed -i '' '/OPENAI_API_KEY=/d' backend/.env; \
-				echo "OPENAI_API_KEY=$$openai_key" >> backend/.env; \
-			else \
-				echo "No OpenAI API key provided. You can add it later to backend/.env file:"; \
-				echo "OPENAI_API_KEY=your_openai_api_key_here"; \
-			fi; \
-			echo ""; \
-			echo "Generating Laravel application key..."; \
-			cd backend && php artisan key:generate; \
-			echo ".env file created successfully!"; \
-		else \
-			echo "Error: .env file is required. Please copy .env.example to .env and configure it."; \
-			exit 1; \
-		fi; \
-	else \
-		echo ".env file found. Ensuring database configuration matches Docker setup..."; \
-		if grep -q "^DB_CONNECTION=" backend/.env; then \
-			sed -i '' 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' backend/.env; \
-		else \
-			echo "DB_CONNECTION=mysql" >> backend/.env; \
-		fi; \
-		if grep -q "^DB_HOST=" backend/.env; then \
-			sed -i '' 's/^DB_HOST=.*/DB_HOST=mysql/' backend/.env; \
-		else \
-			echo "DB_HOST=mysql" >> backend/.env; \
-		fi; \
-		if grep -q "^DB_PORT=" backend/.env; then \
-			sed -i '' 's/^DB_PORT=.*/DB_PORT=3306/' backend/.env; \
-		else \
-			echo "DB_PORT=3306" >> backend/.env; \
-		fi; \
-		if grep -q "^DB_DATABASE=" backend/.env; then \
-			sed -i '' 's/^DB_DATABASE=.*/DB_DATABASE=app_app/' backend/.env; \
-		else \
-			echo "DB_DATABASE=app_app" >> backend/.env; \
-		fi; \
-		if grep -q "^DB_USERNAME=" backend/.env; then \
-			sed -i '' 's/^DB_USERNAME=.*/DB_USERNAME=app_user/' backend/.env; \
-		else \
-			echo "DB_USERNAME=app_user" >> backend/.env; \
-		fi; \
-		if grep -q "^DB_PASSWORD=" backend/.env; then \
-			sed -i '' 's/^DB_PASSWORD=.*/DB_PASSWORD=app_password/' backend/.env; \
-		else \
-			echo "DB_PASSWORD=app_password" >> backend/.env; \
-		fi; \
-		if ! grep -q "APP_KEY=base64:" backend/.env; then \
-			echo "Generating application key..."; \
-			cd backend && php artisan key:generate; \
-		fi; \
-	fi
-
-# Run database migrations
-migrate:
-	@echo "Running database migrations..."
-	@echo "Clearing config cache to ensure latest database settings are used..."
-	cd backend && docker compose exec -T app php artisan config:clear 2>/dev/null || true
-	@echo "Checking database connection..."
-	@for i in $$(seq 1 10); do \
-		if docker compose -f backend/docker-compose.yml exec -T app php artisan migrate:status >/dev/null 2>&1; then \
-			echo "Database connection established!"; \
-			break; \
-		fi; \
-		if [ $$i -eq 10 ]; then \
-			echo "ERROR: Database connection failed after 20 seconds. Please check MySQL container."; \
-			exit 1; \
-		fi; \
-		echo "Waiting for database... ($$i/10)"; \
-		sleep 2; \
-	done
-	@echo "Running migrations and seeding..."
-	cd backend && docker compose exec -T app php artisan migrate:fresh --seed
-
-# Development mode (with live reload)
-dev:
-	@echo "Starting development environment..."
-	cd backend && docker compose up -d
-	@sleep 15
-	@echo "Starting Angular dev server..."
-	cd web-app && npm start
-
-# Show logs
-logs:
-	docker compose -f backend/docker-compose.yml logs -f
-	docker logs -f byu-590r-frontend
-
-# Build production images
-build-images:
-	@echo "Building Docker images..."
-	@echo "Backend image:"
-	cd backend && docker build -t byu-590r-backend .
-	@echo "Frontend image:"
-	cd web-app && docker build -t byu-590r-frontend .
-	@echo "Images built successfully!"
-
-# AWS deployment commands
-aws-setup:
-	@echo "Setting up AWS EC2 server (GitHub Actions will handle deployment)..."
-	cd devops/bash && ./setup-ec2-server.sh
-	@echo "AWS server setup complete! Configure GitHub Actions secrets and push to deploy."
-
-setup_infrastructure: aws-setup
-	@echo "Infrastructure setup complete!"
-
-# Deploy to EC2 (for GitHub Actions)
-deploy-ec2:
-	@echo "Deploying BYU 590R Monorepo to EC2..."
-	@echo "Setting up Laravel backend..."
-	@$(MAKE) setup-backend-ec2
-	@echo "Installing Laravel dependencies..."
-	cd backend && composer install --no-dev --optimize-autoloader
-	@echo "Running database migrations..."
-	@$(MAKE) migrate-ec2
-	@echo "Building Angular frontend..."
-	@$(MAKE) build-frontend-prod
-	@echo "EC2 deployment complete!"
-
-# Setup Laravel backend for EC2
-setup-backend-ec2:
-	@echo "Setting up Laravel backend for EC2..."
-	@if [ ! -f backend/.env ]; then \
-		echo "Creating .env file from .env.example..."; \
-		cp backend/.env.example backend/.env; \
-	fi
-	@echo "Generating application key..."
-	cd backend && php artisan key:generate --force
-	@echo "Setting proper permissions..."
-	sudo chown -R www-data:www-data backend
-	sudo chmod -R 755 backend
-	sudo chmod -R 775 backend/storage
-	sudo chmod -R 775 backend/bootstrap/cache
-	sudo chmod -R 775 backend/storage/logs
-	sudo chmod -R 775 backend/storage/framework
-	sudo chmod -R 775 backend/storage/app
-	@echo "Laravel backend setup complete!"
-
-# Run migrations on EC2
-migrate-ec2:
-	@echo "Running database migrations on EC2..."
-	cd backend && php artisan migrate --force
-	@echo "Database migrations complete!"
-
-# Build frontend for production
-build-frontend-prod:
-	@echo "Building Angular frontend for production..."
-	cd web-app && npm install
-	cd web-app && npm run build:prod
-	@echo "Frontend build complete!"
-
-# AWS deployment commands (Bash only)
-aws-setup:
-	@echo "Setting up AWS EC2 server (GitHub Actions will handle deployment)..."
-	cd devops/bash && ./setup-ec2-server.sh
-	@echo "AWS server setup complete! Configure GitHub Actions secrets and push to deploy."
-
-aws-teardown:
-	@echo "Tearing down AWS environment..."
-	cd devops/bash && ./teardown.sh
-	@echo "AWS teardown complete!"
-
-# AWS cleanup commands for orphaned resources
-aws-list-instances:
-	@echo "Listing all BYU 590R EC2 instances:"
-	@aws ec2 describe-instances \
-		--filters "Name=tag:Name,Values=byu-590r-server" \
-		--query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress,Tags[?Key==`CreatedAt`].Value|[0]]' \
-		--output table
-
-aws-cleanup-orphaned:
-	@echo "Cleaning up orphaned AWS resources..."
-	@echo "Instances older than 24 hours will be terminated:"
-	@aws ec2 describe-instances \
-		--filters "Name=tag:Name,Values=byu-590r-server" \
-		--query 'Reservations[*].Instances[?LaunchTime<`'$$(date -d '24 hours ago' -u +%Y-%m-%dT%H:%M:%S)'`].[InstanceId,State.Name,LaunchTime]' \
-		--output table
-	@echo "Run 'make aws-terminate-orphaned' to actually terminate these instances"
-
-aws-terminate-orphaned:
-	@echo "Terminating orphaned instances older than 24 hours..."
-	@ORPHANED_INSTANCES=$$(aws ec2 describe-instances \
-		--filters "Name=tag:Name,Values=byu-590r-server" \
-		--query 'Reservations[*].Instances[?LaunchTime<`'$$(date -d '24 hours ago' -u +%Y-%m-%dT%H:%M:%S)'`].[InstanceId]' \
-		--output text); \
-	if [ -n "$$ORPHANED_INSTANCES" ]; then \
-		echo "Terminating instances: $$ORPHANED_INSTANCES"; \
-		aws ec2 terminate-instances --instance-ids $$ORPHANED_INSTANCES; \
-		echo "Orphaned instances terminated successfully!"; \
-	else \
-		echo "No orphaned instances found"; \
-	fi
-
-aws-cleanup-all:
-	@echo "⚠️  WARNING: This will terminate ALL BYU 590R instances!"
-	@echo "Current instances:"
-	@$(MAKE) aws-list-instances
-	@echo ""
-	@read -p "Are you sure you want to terminate ALL instances? (type 'yes' to confirm): " confirm; \
-	if [ "$$confirm" = "yes" ]; then \
-		ALL_INSTANCES=$$(aws ec2 describe-instances \
-			--filters "Name=tag:Name,Values=byu-590r-server" \
-			--query 'Reservations[*].Instances[*].InstanceId' \
-			--output text); \
-		if [ -n "$$ALL_INSTANCES" ]; then \
-			echo "Terminating all instances: $$ALL_INSTANCES"; \
-			aws ec2 terminate-instances --instance-ids $$ALL_INSTANCES; \
-			echo "All instances terminated successfully!"; \
-		else \
-			echo "No instances found to terminate"; \
-		fi; \
-	else \
-		echo "Cleanup cancelled"; \
-	fi
 
 # Help
 help:
@@ -420,26 +113,5 @@ help:
 	@echo "  start-prod   - Start with static build (production mode)"
 	@echo "  stop         - Stop all services"
 	@echo "  clean        - Stop and clean up everything"
-	@echo "  build-frontend - Build Angular frontend only"
-	@echo "  build-backend  - Build Laravel backend only"
-	@echo "  setup-backend - Setup Laravel backend (.env, key generation)"
-	@echo "  migrate      - Run database migrations"
-	@echo "  deploy-ec2   - Deploy to EC2 (for GitHub Actions)"
-	@echo "  setup-backend-ec2 - Setup Laravel backend for EC2"
-	@echo "  migrate-ec2  - Run database migrations on EC2"
-	@echo "  build-frontend-prod - Build Angular frontend for production"
-	@echo "  build-images - Build Docker images for backend and frontend"
-	@echo "  setup_infrastructure - Set up AWS EC2 server infrastructure"
-	@echo "  aws-setup    - Set up AWS EC2 server using Bash scripts (GitHub Actions deploys apps)"
-	@echo "  aws-teardown - Tear down AWS environment using Bash scripts"
-	@echo "  aws-list-instances - List all BYU 590R EC2 instances"
-	@echo "  aws-cleanup-orphaned - Show orphaned instances (older than 24h)"
-	@echo "  aws-terminate-orphaned - Terminate orphaned instances"
-	@echo "  aws-cleanup-all - Terminate ALL BYU 590R instances (DANGER!)"
-	@echo "  dev          - Start development environment (legacy)"
-	@echo "  logs         - Show all service logs"
 	@echo "  help         - Show this help message"
 	@echo ""
-	@echo "Environment Detection:"
-	@echo "  - localhost: Uses hot reloading (port 4200)"
-	@echo "  - production: Uses static build (port 3000)"

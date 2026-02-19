@@ -73,9 +73,10 @@ This is required because the production Angular app makes direct API calls (no p
 #### AWS IAM Setup
 
 1. **Create IAM User**:
-  - Go to AWS Console → IAM → Users → Create User
-  - Username: `byu-590r-deploy`
-  - Attach policies directly
+   - Go to AWS Console → IAM → Users → Create User
+   - Username: `byu-590r-deploy`
+   - Attach policies directly
+
 2. **Required Policies**:
   ```json
    {
@@ -121,9 +122,10 @@ This is required because the production Angular app makes direct API calls (no p
    }
   ```
 3. **Generate Access Keys**:
-  - Go to IAM → Users → `byu-590r-deploy` → Security credentials
-  - Create access key → Command Line Interface (CLI)
-  - Download CSV file
+   - Go to IAM → Users → `byu-590r-deploy` → Security credentials
+   - Create access key → Command Line Interface (CLI)
+   - Download CSV file
+
 4. **Configure Local AWS CLI**:
   ```bash
    aws configure
@@ -137,21 +139,25 @@ This is required because the production Angular app makes direct API calls (no p
 #### OpenAI API Setup (Optional)
 
 1. **Create OpenAI Account**:
-  - Go to [platform.openai.com](https://platform.openai.com)
-  - Sign up or log in to your account
+   - Go to [platform.openai.com](https://platform.openai.com)
+   - Sign up or log in to your account
+
 2. **Add Credits/Billing**:
-  - Go to Billing → Payment methods
-  - Add a credit card or purchase credits
-  - Minimum: $5 credit for testing
-  - Recommended: $10-20 for development
+   - Go to Billing → Payment methods
+   - Add a credit card or purchase credits
+   - Minimum: $5 credit for testing
+   - Recommended: $10-20 for development
+
 3. **Generate API Key**:
-  - Go to API Keys section in your OpenAI dashboard
-  - Click "Create new secret key"
-  - Name: `byu-590r-project`
-  - Copy the key (starts with `sk-`)
+   - Go to API Keys section in your OpenAI dashboard
+   - Click "Create new secret key"
+   - Name: `byu-590r-project`
+   - Copy the key (starts with `sk-`)
+
 4. **Add to GitHub Secrets**:
-  - Repository → Settings → Secrets and variables → Actions
-  - Add `OPENAI_API_KEY` with your generated key
+   - Repository → Settings → Secrets and variables → Actions
+   - Add `OPENAI_API_KEY` with your generated key
+
 5. **Add to Local Environment** (optional):
   ```bash
    # Add to backend/.env file
@@ -201,8 +207,15 @@ cd devops/bash
    make start
   ```
 
-- Frontend: [http://localhost:4200](http://localhost:4200)
-- Backend API: [http://localhost:8000](http://localhost:8000)
+- Frontend: http://localhost:4200
+- Backend API: http://localhost:8000
+
+### Local S3 and demo book images
+
+For local development you do **not** need AWS S3. The app uses `FILESYSTEM_DISK=local` (see `backend/.env.example`) and serves book cover images from local storage.
+
+- **Demo images**: Place cover images in `backend/public/assets/books/` (e.g. `hp1.jpeg`, `bom.jpg` — see that directory’s README). During `make start`, `app:setup-demo-images` copies them into `storage/app/public/images/` and creates the storage link so seeded books show covers at `/storage/images/...`.
+- To use real S3 locally, set `FILESYSTEM_DISK=s3` and add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `S3_BUCKET` (or `S3_BUCKET_DEV`) in `backend/.env`.
 
 ## Credits
 
