@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -16,14 +15,17 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        // Insert user data directly into the database
-        DB::table('users')->insert([
-            'name' => 'Nathan Felix',
-            'email' => 'nathan.felix@gmail.com',
-            'email_verified_at' => null,
-            'password' => bcrypt('securepassword123'),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
-        ]);
+        // Use updateOrCreate to avoid duplicate email errors
+        User::updateOrCreate(
+            ['email' => 'nathan.felix@gmail.com'], // Check if this email exists
+            [
+                'name' => 'Nathan Felix',
+                'email' => 'nathan.felix@gmail.com',
+                'email_verified_at' => null,
+                'password' => bcrypt('securepassword123'),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
     }
 }
