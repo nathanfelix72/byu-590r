@@ -45,7 +45,7 @@
               <p class="tab-subtitle">Sign in to continue to your account</p>
             </div>
             
-            <form [formGroup]="loginForm" (ngSubmit)="submitLogin()" class="auth-form">
+            <form [formGroup]="loginForm" (ngSubmit)="submitLogin(); $event.preventDefault()" class="auth-form">
               <div class="input-container">
                 <mat-form-field appearance="outline" class="full-width modern-input">
                   <mat-label>
@@ -70,7 +70,7 @@
                   @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
                     <mat-error>
                       <mat-icon>error_outline</mat-icon>
-                      Password is required and must be at least 8 characters
+                      Password is required
                     </mat-error>
                   }
                 </mat-form-field>
@@ -88,8 +88,9 @@
                 <button 
                   mat-raised-button 
                   class="submit-button" 
-                  type="submit" 
+                  type="button"
                   [class.loading]="isLoading()"
+                  [disabled]="isLoading()"
                   (click)="submitLogin()">
                   @if (isLoading()) {
                     <mat-spinner diameter="20" class="button-spinner"></mat-spinner>

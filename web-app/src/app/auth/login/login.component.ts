@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, NgZone } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   FormBuilder,
@@ -8,7 +8,6 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { AuthStore } from '../../core/stores/auth.store';
 import { MatCardModule } from '@angular/material/card';
@@ -49,6 +48,7 @@ export class LoginComponent {
   private snackBar = inject(MatSnackBar);
   private sanitizer = inject(DomSanitizer);
   private dialog = inject(MatDialog);
+  private ngZone = inject(NgZone);
 
   loginForm: FormGroup;
   registerForm: FormGroup;
@@ -79,7 +79,7 @@ export class LoginComponent {
         '',
         [Validators.required, Validators.minLength(3), Validators.email],
       ],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      password: ['', [Validators.required]],
     });
 
     this.registerForm = this.fb.group(
@@ -133,7 +133,6 @@ export class LoginComponent {
 
   submitLogin(): void {
     if (!this.loginForm.valid) {
-      // Mark all fields as touched to show validation errors
       Object.keys(this.loginForm.controls).forEach(key => {
         this.loginForm.get(key)?.markAsTouched();
       });
@@ -144,20 +143,23 @@ export class LoginComponent {
     this.errorMsg.set('');
     this.isLoading.set(true);
 
-    firstValueFrom(this.authService.login(this.loginForm.value))
-      .then((response) => {
+    this.authService.login(this.loginForm.value).subscribe({
+      next: (response) => {
         if (response?.results?.token) {
           this.authStore.login(response.results);
           this.router.navigate(['/home']);
         }
         this.isLoading.set(false);
-      })
-      .catch((error) => {
-        this.errorMsg.set(
-          error?.error?.message || error?.message || 'Login failed'
-        );
-        this.isLoading.set(false);
-      });
+      },
+      error: (error) => {
+        this.ngZone.run(() => {
+          this.errorMsg.set(
+            error?.error?.message || error?.message || 'Login failed'
+          );
+          this.isLoading.set(false);
+        });
+      },
+    });
   }
 
   submitForgotPassword(): void {
