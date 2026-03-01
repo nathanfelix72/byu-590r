@@ -1,5 +1,12 @@
 # BYU 590R Monorepo .gitignore
 
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
 # Server configuration files (contain instance-specific data)
 devops/.server-config
 devops/.aws-config

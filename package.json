@@ -1,0 +1,11 @@
+{
+  "name": "byu-590r-monorepo",
+  "private": true,
+  "scripts": {
+    "test:deployment": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0"
+  }
+}
