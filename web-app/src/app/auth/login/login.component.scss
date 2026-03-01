@@ -1,3 +1,4 @@
+@use 'sass:math';
 @use '../../../assets/styles/colors' as colors;
 @use '../../../assets/styles/spacing' as spacing;
 @use '../../../assets/styles/fonts' as fonts;
@@ -176,10 +177,10 @@
   
   @for $i from 1 through 10 {
     &:nth-child(#{$i}) {
-      left: random(100) * 1%;
-      top: random(100) * 1%;
-      animation-delay: random(15) * 0.1s;
-      animation-duration: (10 + random(10)) * 1s;
+      left: math.random(100) * 1%;
+      top: math.random(100) * 1%;
+      animation-delay: math.random(15) * 0.1s;
+      animation-duration: (10 + math.random(10)) * 1s;
     }
   }
 }
