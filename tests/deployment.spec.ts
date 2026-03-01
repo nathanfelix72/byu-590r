@@ -60,11 +60,11 @@ test.describe("Deployment Verification", () => {
 		const signInButton = page.getByRole("button", { name: "Sign In" });
 		await expect(signInButton).toBeVisible({ timeout: 10000 });
 
-		// Verify login form elements are present
-		const emailInput = page.getByLabel(/Email/i);
+		// Verify login form elements are present (use placeholders - Material labels may not expose for getByLabel)
+		const emailInput = page.getByPlaceholder("Enter your email");
 		await expect(emailInput).toBeVisible();
 
-		const passwordInput = page.getByLabel(/Password/i);
+		const passwordInput = page.getByPlaceholder("Enter your password");
 		await expect(passwordInput).toBeVisible();
 
 		// Take a screenshot for verification
