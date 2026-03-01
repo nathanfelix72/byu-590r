@@ -99,6 +99,14 @@
                     <span>Sign In</span>
                   }
                 </button>
+                <button 
+                  mat-stroked-button 
+                  type="button" 
+                  class="register-button"
+                  (click)="openRegisterDialog()">
+                  <mat-icon>person_add</mat-icon>
+                  <span>Register</span>
+                </button>
               </div>
             </form>
           </div>
@@ -166,9 +174,17 @@
                 <mat-form-field appearance="outline" class="full-width modern-input">
                   <mat-label>
                     <mat-icon class="input-icon">person</mat-icon>
-                    Full Name *
+                    First Name *
                   </mat-label>
-                  <input matInput type="text" formControlName="name" placeholder="John Doe" />
+                  <input matInput type="text" formControlName="first_name" placeholder="John" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width modern-input">
+                  <mat-label>
+                    <mat-icon class="input-icon">person</mat-icon>
+                    Last Name *
+                  </mat-label>
+                  <input matInput type="text" formControlName="last_name" placeholder="Doe" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="full-width modern-input">
@@ -192,8 +208,8 @@
                     <mat-icon class="input-icon">lock_outline</mat-icon>
                     Confirm Password *
                   </mat-label>
-                  <input matInput type="password" formControlName="c_password" placeholder="Re-enter your password" />
-                  @if (registerForm.get('c_password')?.hasError('passwordMismatch')) {
+                  <input matInput type="password" formControlName="password_confirmation" placeholder="Re-enter your password" />
+                  @if (registerForm.get('password_confirmation')?.hasError('passwordMismatch')) {
                     <mat-error>
                       <mat-icon>error_outline</mat-icon>
                       The password confirmation does not match.

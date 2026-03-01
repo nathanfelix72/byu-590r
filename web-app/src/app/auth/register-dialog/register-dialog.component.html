@@ -1,0 +1,67 @@
+<h2 mat-dialog-title>Register</h2>
+<mat-dialog-content>
+  <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>First Name</mat-label>
+      <input matInput type="text" formControlName="first_name" placeholder="First Name" />
+      @if (registerForm.get('first_name')?.invalid && registerForm.get('first_name')?.touched) {
+        <mat-error>First name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Last Name</mat-label>
+      <input matInput type="text" formControlName="last_name" placeholder="Last Name" />
+      @if (registerForm.get('last_name')?.invalid && registerForm.get('last_name')?.touched) {
+        <mat-error>Last name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" placeholder="email@example.com" />
+      @if (registerForm.get('email')?.invalid && registerForm.get('email')?.touched) {
+        <mat-error>Valid email is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" formControlName="password" placeholder="At least 8 characters" />
+      @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {
+        <mat-error>Password must be at least 8 characters</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Confirm Password</mat-label>
+      <input matInput type="password" formControlName="password_confirmation" placeholder="Re-enter password" />
+      @if (registerForm.get('password_confirmation')?.hasError('passwordMismatch')) {
+        <mat-error>Passwords do not match</mat-error>
+      }
+    </mat-form-field>
+
+    @if (errorMsg) {
+      <div class="alert alert-danger">
+        <mat-icon>error</mat-icon>
+        <span>{{ errorMsg }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="isLoading">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    class="register-submit-btn"
+    (click)="onSubmit()"
+    [disabled]="!registerForm.valid || isLoading">
+    @if (isLoading) {
+      <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+      <span>Creating account...</span>
+    } @else {
+      <span>Register</span>
+    }
+  </button>
+</mat-dialog-actions>

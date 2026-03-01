@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface LoginRequest {
@@ -9,10 +10,11 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   password: string;
-  c_password: string;
+  password_confirmation: string;
 }
 
 export interface AuthResponse {
@@ -38,12 +40,26 @@ export class AuthService {
     );
   }
 
-  logout(): void {
-    localStorage.removeItem('user');
+  /** Calls POST /api/logout with Bearer token, then on success removes user from localStorage. */
+  logout(): Observable<{ success: boolean; results: unknown; message: string }> {
+    const user = this.getStoredUser();
+    const headers = new HttpHeaders(
+      user?.token ? { Authorization: `Bearer ${user.token}` } : {}
+    );
+    return this.http
+      .post<{ success: boolean; results: unknown; message: string }>(
+        `${this.apiUrl}logout`,
+        {},
+        { headers }
+      )
+      .pipe(tap(() => localStorage.removeItem('user')));
   }
 
-  register(user: RegisterRequest): Observable<any> {
-    return this.http.post(`${this.apiUrl}register`, user);
+  register(user: RegisterRequest): Observable<{ success: boolean; results: AuthResponse; message: string }> {
+    return this.http.post<{ success: boolean; results: AuthResponse; message: string }>(
+      `${this.apiUrl}register`,
+      user
+    );
   }
 
   forgotPassword(email: string): Observable<any> {
@@ -62,6 +78,11 @@ export class AuthService {
 
   storeUser(user: AuthResponse): void {
     localStorage.setItem('user', JSON.stringify(user));
+  }
+
+  /** Removes user from localStorage (e.g. after logout or on error). */
+  clearUser(): void {
+    localStorage.removeItem('user');
   }
 }
 

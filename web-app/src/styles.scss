@@ -47,4 +47,9 @@ body {
       color: colors.$colors-white !important;
     }
   }
+
+  .register-dialog-panel .mat-mdc-dialog-container {
+    background: transparent !important;
+    padding: 0 !important;
+  }
 }

@@ -41,10 +41,14 @@ export const AuthStore = signalStore(
       });
     },
     logout(): void {
-      authService.logout();
-      patchState(store, {
-        loggedIn: false,
-        user: null,
+      authService.logout().subscribe({
+        next: () => {
+          patchState(store, { loggedIn: false, user: null });
+        },
+        error: () => {
+          authService.clearUser();
+          patchState(store, { loggedIn: false, user: null });
+        },
       });
     },
     updateAvatar(avatar: string | null): void {

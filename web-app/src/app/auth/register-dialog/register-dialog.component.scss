@@ -1,0 +1,169 @@
+// Solid light card so text is always readable (dark on light)
+:host {
+  display: block;
+  background: #fff;
+  border-radius: 16px;
+  color: rgba(0, 0, 0, 0.87);
+  padding: 0;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+}
+
+h2.mat-mdc-dialog-title {
+  color: rgba(0, 0, 0, 0.87) !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  padding: 1.25rem 1.5rem 0.5rem !important;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 320px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// Form fields: dark text on light, clear borders
+:host ::ng-deep .mat-mdc-form-field {
+  .mat-mdc-text-field-wrapper {
+    background-color: #fafafa !important;
+    border-radius: 8px !important;
+
+    &:hover {
+      background-color: #f5f5f5 !important;
+    }
+
+    &.mdc-text-field--focused {
+      background-color: #fff !important;
+    }
+  }
+
+  .mat-mdc-form-field-label,
+  .mdc-floating-label {
+    color: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .mat-mdc-input-element {
+    color: rgba(0, 0, 0, 0.87) !important;
+    caret-color: #1976d2;
+
+    &::placeholder {
+      color: rgba(0, 0, 0, 0.38);
+    }
+  }
+
+  .mat-mdc-form-field-outline .mat-mdc-notched-outline__leading,
+  .mat-mdc-form-field-outline .mat-mdc-notched-outline__notch,
+  .mat-mdc-form-field-outline .mat-mdc-notched-outline__trailing {
+    border-color: rgba(0, 0, 0, 0.2) !important;
+  }
+
+  &.mat-focused .mat-mdc-form-field-outline .mat-mdc-notched-outline__leading,
+  &.mat-focused .mat-mdc-form-field-outline .mat-mdc-notched-outline__notch,
+  &.mat-focused .mat-mdc-form-field-outline .mat-mdc-notched-outline__trailing {
+    border-color: #1976d2 !important;
+    border-width: 2px !important;
+  }
+
+  .mat-mdc-form-field-error,
+  .mat-mdc-error {
+    color: #d32f2f !important;
+  }
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+
+  &.alert-danger {
+    background: #ffebee;
+    border: 1px solid rgba(211, 47, 47, 0.4);
+    color: #c62828;
+
+    mat-icon {
+      color: #d32f2f;
+    }
+  }
+}
+
+.button-spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+mat-dialog-content {
+  padding: 0.5rem 1.5rem 0 !important;
+}
+
+mat-dialog-actions {
+  padding: 1rem 1.5rem 1.25rem !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  gap: 0.5rem;
+
+  .mat-mdc-button {
+    color: rgba(0, 0, 0, 0.7) !important;
+  }
+
+  // Register button: clear primary style so it doesn’t look odd in the dialog
+  .register-submit-btn,
+  button.mat-mdc-raised-button[color='primary'] {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+    font-weight: 600;
+    padding: 0 1.25rem;
+    min-height: 40px;
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &:hover:not(:disabled) {
+      background-color: #1565c0 !important;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    &:disabled {
+      background-color: rgba(0, 0, 0, 0.12) !important;
+      color: rgba(0, 0, 0, 0.38) !important;
+    }
+
+    .mat-icon,
+    .mdc-button__label,
+    span {
+      color: inherit !important;
+    }
+
+    .button-spinner {
+      margin-right: 0.5rem;
+    }
+  }
+}
+
+// Override Material’s MDC button surface so our background shows
+:host ::ng-deep mat-dialog-actions {
+  .register-submit-btn .mat-mdc-button-persistent-ripple::before,
+  .register-submit-btn .mdc-button__ripple,
+  button.mat-mdc-raised-button[color='primary'] .mat-mdc-button-persistent-ripple::before,
+  button.mat-mdc-raised-button[color='primary'] .mdc-button__ripple {
+    background-color: transparent !important;
+  }
+
+  .register-submit-btn.mdc-button,
+  button.mat-mdc-raised-button[color='primary'].mdc-button {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+  }
+
+  .register-submit-btn.mdc-button:hover:not(:disabled),
+  button.mat-mdc-raised-button[color='primary'].mdc-button:hover:not(:disabled) {
+    background-color: #1565c0 !important;
+  }
+}
