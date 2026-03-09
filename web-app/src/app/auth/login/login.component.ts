@@ -186,8 +186,16 @@ export class LoginComponent {
           this.selectedTabIndex = 0;
           this.forgotPasswordForm.reset();
         },
-        error: () => {
+        error: (err) => {
           this.submitForgotPasswordLoading.set(false);
+          const msg =
+            err?.error?.message ||
+            'Something went wrong. Please check the email address and try again.';
+          this.snackBar.open(msg, 'Close', {
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top',
+          });
         },
       });
   }

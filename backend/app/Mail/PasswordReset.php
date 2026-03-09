@@ -23,8 +23,8 @@ class PasswordReset extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('webmaster@localhost.com', 'Webmaster'),
-            subject: 'Temp Password Reset Complete!',
+            from: new Address(config('mail.from.address'), config('mail.from.name')),
+            subject: 'Your new password',
         );
     }
 

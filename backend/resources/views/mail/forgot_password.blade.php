@@ -1,4 +1,8 @@
 <div>
-    <a href="{{ $base_url }}/api/password_reset?remember_token={{ $user->remember_token }}">Reset Password Here</a>
+    <p>You requested a password reset. Click the link below to choose a new password.</p>
+    <p>
+        <a href="{{ $reset_url }}">Choose new password</a>
+    </p>
+    <p>If you did not request this, you can ignore this email.</p>
 </div>
 

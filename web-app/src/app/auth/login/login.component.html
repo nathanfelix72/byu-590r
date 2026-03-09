@@ -134,6 +134,17 @@
                     Email Address
                   </mat-label>
                   <input matInput type="email" formControlName="email" placeholder="your.email@example.com" />
+                  @if (forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched) {
+                    <mat-error>
+                      @if (forgotPasswordForm.get('email')?.errors?.['required']) {
+                        <mat-icon>error_outline</mat-icon>
+                        Email is required
+                      } @else if (forgotPasswordForm.get('email')?.errors?.['email']) {
+                        <mat-icon>error_outline</mat-icon>
+                        Please enter a valid email address
+                      }
+                    </mat-error>
+                  }
                 </mat-form-field>
               </div>
 

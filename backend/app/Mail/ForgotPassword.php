@@ -24,21 +24,19 @@ class ForgotPassword extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('webmaster@localhost.com', 'Webmaster'),
-            subject: 'Forgot Password',
+            from: new Address(config('mail.from.address'), config('mail.from.name')),
+            subject: 'Reset your password',
         );
     }
 
     public function content(): Content
     {
-        $base_url = env('APP_URL', 'http://127.0.0.1:8000');
-        if (env('APP_ENV') === 'local') {
-            $base_url = 'http://127.0.0.1:8000';
-        }
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:4200'), '/');
+        $resetUrl = $frontendUrl . '/reset-password?remember_token=' . urlencode($this->user->remember_token);
         return new Content(
             view: 'mail.forgot_password',
             with: [
-                'base_url' => $base_url,
+                'reset_url' => $resetUrl,
                 'user' => $this->user
             ]
         );

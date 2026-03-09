@@ -62,10 +62,29 @@ export class AuthService {
     );
   }
 
-  forgotPassword(email: string): Observable<any> {
+  forgotPassword(email: string): Observable<{ success: boolean; message: string }> {
     const formData = new FormData();
     formData.append('email', email);
-    return this.http.post(`${this.apiUrl}forgot_password`, formData);
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}forgot_password`,
+      formData
+    );
+  }
+
+  /** GET: Validate reset token (e.g. from email link). */
+  validateResetToken(rememberToken: string): Observable<{ success: boolean; message: string }> {
+    return this.http.get<{ success: boolean; message: string }>(
+      `${this.apiUrl}password_reset`,
+      { params: { remember_token: rememberToken } }
+    );
+  }
+
+  /** POST: Set new password using the reset token. */
+  setNewPassword(rememberToken: string, password: string, passwordConfirmation: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}password_reset`,
+      { remember_token: rememberToken, password, password_confirmation: passwordConfirmation }
+    );
   }
 
   getStoredUser(): AuthResponse | null {

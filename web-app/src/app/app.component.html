@@ -47,12 +47,8 @@
   </mat-toolbar>
   }
 
-  <main class="app-main">
-    @if (isAuthenticated) {
+  <main class="app-main" [class.app-main--full-bleed]="!isAuthenticated">
     <router-outlet></router-outlet>
-    } @else {
-    <app-login></app-login>
-    }
   </main>
 
   @if (profileDialog()) {

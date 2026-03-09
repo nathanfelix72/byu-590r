@@ -19,6 +19,7 @@ Route::controller(RegisterController::class)->group(function () {
     Route::post('logout', 'logout');
     Route::post('forgot_password', 'forgotPassword');
     Route::get('password_reset', 'passwordReset');
+    Route::post('password_reset', 'setNewPassword');
     Route::get('verify_email', 'verifyEmail');
 });
 

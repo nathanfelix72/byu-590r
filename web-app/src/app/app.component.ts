@@ -20,7 +20,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { LoginComponent } from './auth/login/login.component';
 
 @Component({
   selector: 'app-root',
@@ -40,7 +39,6 @@ import { LoginComponent } from './auth/login/login.component';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    LoginComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
