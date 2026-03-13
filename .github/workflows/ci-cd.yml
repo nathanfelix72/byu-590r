@@ -188,6 +188,17 @@ jobs:
             (grep -q '^AWS_ACCESS_KEY_ID=' .env && sed -i 's/^AWS_ACCESS_KEY_ID=.*/AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}/' .env || echo 'AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}' >> .env); \
             (grep -q '^AWS_SECRET_ACCESS_KEY=' .env && sed -i 's/^AWS_SECRET_ACCESS_KEY=.*/AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}/' .env || echo 'AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}' >> .env); \
             (grep -q '^AWS_DEFAULT_REGION=' .env && sed -i 's/^AWS_DEFAULT_REGION=.*/AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}/' .env || echo 'AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}' >> .env); \
+            # Optional mail + frontend URL secrets. Only overwrite if secrets are set so local/dev stays simple.
+            ([ -z '${{ secrets.MAIL_MAILER }}' ] || (grep -q '^MAIL_MAILER=' .env && sed -i 's/^MAIL_MAILER=.*/MAIL_MAILER=${{ secrets.MAIL_MAILER }}/' .env || echo 'MAIL_MAILER=${{ secrets.MAIL_MAILER }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_HOST }}' ] || (grep -q '^MAIL_HOST=' .env && sed -i 's/^MAIL_HOST=.*/MAIL_HOST=${{ secrets.MAIL_HOST }}/' .env || echo 'MAIL_HOST=${{ secrets.MAIL_HOST }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_PORT }}' ] || (grep -q '^MAIL_PORT=' .env && sed -i 's/^MAIL_PORT=.*/MAIL_PORT=${{ secrets.MAIL_PORT }}/' .env || echo 'MAIL_PORT=${{ secrets.MAIL_PORT }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_USERNAME }}' ] || (grep -q '^MAIL_USERNAME=' .env && sed -i 's/^MAIL_USERNAME=.*/MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}/' .env || echo 'MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_PASSWORD }}' ] || (grep -q '^MAIL_PASSWORD=' .env && sed -i 's/^MAIL_PASSWORD=.*/MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}/' .env || echo 'MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_ENCRYPTION }}' ] || (grep -q '^MAIL_ENCRYPTION=' .env && sed -i 's/^MAIL_ENCRYPTION=.*/MAIL_ENCRYPTION=${{ secrets.MAIL_ENCRYPTION }}/' .env || echo 'MAIL_ENCRYPTION=${{ secrets.MAIL_ENCRYPTION }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_FROM_ADDRESS }}' ] || (grep -q '^MAIL_FROM_ADDRESS=' .env && sed -i 's/^MAIL_FROM_ADDRESS=.*/MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}/' .env || echo 'MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}' >> .env)); \
+            ([ -z '${{ secrets.MAIL_FROM_NAME }}' ] || (grep -q '^MAIL_FROM_NAME=' .env && sed -i 's/^MAIL_FROM_NAME=.*/MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}/' .env || echo 'MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}' >> .env)); \
+            # FRONTEND_URL used in ForgotPassword links and verifyEmail redirect; default to http://EC2_HOST if not provided.
+            ([ -z '${{ secrets.FRONTEND_URL }}' ] || (grep -q '^FRONTEND_URL=' .env && sed -i 's|^FRONTEND_URL=.*|FRONTEND_URL=${{ secrets.FRONTEND_URL }}|' .env || echo 'FRONTEND_URL=${{ secrets.FRONTEND_URL }}' >> .env)); \
             ([ -z '${{ secrets.APP_DEBUG }}' ] || (grep -q '^APP_DEBUG=' .env && sed -i 's/^APP_DEBUG=.*/APP_DEBUG=${{ secrets.APP_DEBUG }}/' .env || echo 'APP_DEBUG=${{ secrets.APP_DEBUG }}' >> .env)); \
             ([ -z '${{ secrets.OPENAI_API_KEY }}' ] || (grep -q '^OPENAI_API_KEY=' .env && sed -i 's|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}|' .env || echo 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}' >> .env)); \
             true"
