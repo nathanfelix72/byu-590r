@@ -205,23 +205,24 @@ jobs:
 
       - name: Set PHP upload limits on server
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "set -e
-          for dir in /etc/php/8.3/fpm/conf.d /etc/php/8.2/fpm/conf.d /etc/php/8.1/fpm/conf.d; do
-            if [ -d \"\$dir\" ]; then
-              echo 'upload_max_filesize = 10M' | sudo tee \"\$dir/99-upload-limits.ini\" > /dev/null
-              echo 'post_max_size = 12M' | sudo tee -a \"\$dir/99-upload-limits.ini\" > /dev/null
-              echo \"Set upload limits in \$dir\"
-              break
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} 'set -e
+          # Patch main php.ini files (FPM and Apache) so upload limits apply
+          for f in /etc/php/8.3/fpm/php.ini /etc/php/8.3/apache2/php.ini /etc/php/8.2/fpm/php.ini /etc/php/8.2/apache2/php.ini /etc/php/8.1/fpm/php.ini /etc/php/8.1/apache2/php.ini; do
+            if [ -f "$f" ]; then
+              sudo sed -i "s/^;\? *upload_max_filesize.*/upload_max_filesize = 10M/" "$f"
+              sudo sed -i "s/^;\? *post_max_size.*/post_max_size = 12M/" "$f"
+              sudo grep -q "^upload_max_filesize" "$f" || echo "upload_max_filesize = 10M" | sudo tee -a "$f" > /dev/null
+              sudo grep -q "^post_max_size" "$f" || echo "post_max_size = 12M" | sudo tee -a "$f" > /dev/null
+              echo "Patched $f"
             fi
           done
           for svc in php8.3-fpm php8.2-fpm php8.1-fpm; do
-            if systemctl is-active --quiet \$svc 2>/dev/null; then
-              sudo systemctl restart \$svc
-              echo \"Restarted \$svc\"
+            if systemctl is-active --quiet $svc 2>/dev/null; then
+              sudo systemctl restart $svc && echo "Restarted $svc"
               break
             fi
           done
-          sudo systemctl reload apache2 2>/dev/null || sudo systemctl restart apache2 2>/dev/null || true"
+          (sudo systemctl restart apache2 || sudo systemctl reload apache2 || true) && echo "Apache restarted/reloaded"'
 
       - name: Migrate and restart backend
         run: |
