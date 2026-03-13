@@ -21,39 +21,77 @@ class UserController extends BaseController
 
     public function uploadAvatar(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg',
-        ]);
-        if ($request->hasFile('image')) {
-            $authUser = Auth::user();
-            $user = User::findOrFail($authUser->id);
-            $extension = request()->file('image')->getClientOriginalExtension();
-            $image_name = time() . '_' . $authUser->id . '.' . $extension;
-            $path = $request->file('image')->storeAs(
-                'images',
-                $image_name,
-                's3'
-            );
-            Storage::disk('s3')->setVisibility($path, "public");
-            if (!$path) {
-                return $this->sendError($path, 'User profile avatar failed to upload!');
+        // If PHP rejected the upload (e.g. over upload_max_filesize), file won't be valid
+        $file = $request->file('image');
+        if (!$file || !$file->isValid()) {
+            $msg = 'The image failed to upload.';
+            if ($file && $file->getError() !== UPLOAD_ERR_OK) {
+                $msg .= ' ' . $file->getErrorMessage();
+            } else {
+                $msg .= ' Check that the file is under 5MB and try again (PHP upload limits may apply).';
             }
-
-            $user->avatar = $path;
-            $user->save();
-            $success['avatar'] = null;
-            if (isset($user->avatar)) {
-                $success['avatar'] = $this->getS3Url($path);
-            }
-            return $this->sendResponse($success, 'User profile avatar uploaded successfully!');
+            return $this->sendError($msg, ['image' => [$msg]], 422);
         }
+
+        $request->validate([
+            'image' => [
+                'required',
+                'file',
+                'mimes:jpeg,png,jpg,gif,webp',
+                'max:5120', // 5MB
+            ],
+        ], [
+            'image.required' => 'Please select an image to upload.',
+            'image.file' => 'The image failed to upload. Check file size (max 5MB) and try again.',
+            'image.mimes' => 'The image must be a jpeg, png, gif, or webp file.',
+            'image.max' => 'The image may not be larger than 5MB.',
+        ]);
+
+        $authUser = Auth::user();
+        $user = User::findOrFail($authUser->id);
+        $file = $request->file('image');
+        $extension = $file->getClientOriginalExtension();
+        $image_name = time() . '_' . $authUser->id . '.' . $extension;
+
+        $disk = $this->avatarDisk();
+        $path = $file->storeAs('images', $image_name, $disk);
+
+        if (!$path) {
+            return $this->sendError('User profile avatar failed to upload!', [], 500);
+        }
+
+        if ($disk === 's3') {
+            Storage::disk('s3')->setVisibility($path, 'public');
+        }
+
+        $user->avatar = $path;
+        $user->save();
+
+        $success['avatar'] = $this->getS3Url($path);
+        return $this->sendResponse($success, 'User profile avatar uploaded successfully!');
+    }
+
+    /** Use S3 when configured, otherwise public disk for local/dev. */
+    private function avatarDisk(): string
+    {
+        $key = config('filesystems.disks.s3.key');
+        $bucket = config('filesystems.disks.s3.bucket');
+        if (!empty($key) && !empty($bucket)) {
+            return 's3';
+        }
+        return 'public';
     }
 
     public function removeAvatar()
     {
         $authUser = Auth::user();
         $user = User::findOrFail($authUser->id);
-        Storage::disk('s3')->delete($user->avatar);
+        if ($user->avatar) {
+            if ($this->avatarDisk() === 's3') {
+                Storage::disk('s3')->delete($user->avatar);
+            }
+            Storage::disk('public')->delete($user->avatar);
+        }
         $user->avatar = null;
         $user->save();
         $success['avatar'] = null;
