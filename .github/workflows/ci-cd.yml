@@ -203,6 +203,26 @@ jobs:
             ([ -z '${{ secrets.OPENAI_API_KEY }}' ] || (grep -q '^OPENAI_API_KEY=' .env && sed -i 's|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}|' .env || echo 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}' >> .env)); \
             true"
 
+      - name: Set PHP upload limits on server
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "set -e
+          for dir in /etc/php/8.3/fpm/conf.d /etc/php/8.2/fpm/conf.d /etc/php/8.1/fpm/conf.d; do
+            if [ -d \"\$dir\" ]; then
+              echo 'upload_max_filesize = 10M' | sudo tee \"\$dir/99-upload-limits.ini\" > /dev/null
+              echo 'post_max_size = 12M' | sudo tee -a \"\$dir/99-upload-limits.ini\" > /dev/null
+              echo \"Set upload limits in \$dir\"
+              break
+            fi
+          done
+          for svc in php8.3-fpm php8.2-fpm php8.1-fpm; do
+            if systemctl is-active --quiet \$svc 2>/dev/null; then
+              sudo systemctl restart \$svc
+              echo \"Restarted \$svc\"
+              break
+            fi
+          done
+          sudo systemctl reload apache2 2>/dev/null || sudo systemctl restart apache2 2>/dev/null || true"
+
       - name: Migrate and restart backend
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan config:clear && php artisan migrate --force && php artisan migrate --seed --force 2>/dev/null || true && sudo systemctl restart apache2"
