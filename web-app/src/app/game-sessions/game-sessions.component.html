@@ -1,0 +1,35 @@
+<table class="game-sessions-table">
+  <thead>
+    <tr>
+      <th>Cover</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Current Turn</th>
+      <th>Created At</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (session of gameSessions(); track session.id) {
+      <tr>
+        <td class="cover-cell">
+          <img
+            [src]="
+              session.game_session_cover_picture
+                ? session.game_session_cover_picture
+                : 'assets/images/default-game-session.png'
+            "
+            alt="Game session cover"
+            class="cover-image"
+          />
+        </td>
+        <td>{{ session.name }}</td>
+        <td>{{ session.description }}</td>
+        <td>{{ session.status }}</td>
+        <td>{{ session.current_turn !== null ? session.current_turn + 1 : '—' }}</td>
+        <td>{{ session.created_at | date:'short' }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
+

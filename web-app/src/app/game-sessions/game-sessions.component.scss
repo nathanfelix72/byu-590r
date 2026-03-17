@@ -1,0 +1,22 @@
+.game-sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.game-sessions-table th,
+.game-sessions-table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.cover-cell {
+  width: 160px;
+}
+
+.cover-image {
+  width: 150px;
+  height: auto;
+  object-fit: cover;
+}
+

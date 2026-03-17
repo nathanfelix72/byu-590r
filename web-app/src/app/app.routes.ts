@@ -10,6 +10,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'game-sessions',
+    loadComponent: () =>
+      import('./game-sessions/game-sessions.component').then(
+        (m) => m.GameSessionsComponent
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./auth/login/login.component').then((m) => m.LoginComponent),

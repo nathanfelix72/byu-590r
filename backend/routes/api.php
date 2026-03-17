@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\HelloWorldController;
+use App\Http\Controllers\Api\GameSessionController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -40,4 +41,6 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
         Route::post('books/{id}/update_book_picture', 'updateBookPicture');
         Route::post('send_book_report', 'sendBookReport');
     });
+
+    Route::apiResource('gamesessions', GameSessionController::class)->only(['index']);
 });
