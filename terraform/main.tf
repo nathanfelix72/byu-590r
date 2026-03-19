@@ -244,10 +244,10 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/var/www/html/api
-ExecStart=/usr/bin/php artisan reverb:start --host=0.0.0.0 --port=8080
+ExecStart=/bin/sh -c 'PHP_BIN="$(command -v php8.3 || command -v php)" && exec "$PHP_BIN" artisan reverb:start --host=0.0.0.0 --port=8080'
 Restart=always
 RestartSec=3
-User=www-data
+User=ubuntu
 
 [Install]
 WantedBy=multi-user.target

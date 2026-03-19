@@ -226,7 +226,38 @@ jobs:
 
       - name: Migrate and restart backend
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "export PATH=/usr/bin:/usr/local/bin:\$PATH && cd /var/www/html/api && php artisan config:clear && php artisan migrate --force && php artisan migrate --seed --force 2>/dev/null || true && sudo systemctl restart apache2 && (sudo systemctl restart reverb || sudo systemctl start reverb || true)"
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'REMOTE'
+          set -e
+          export PATH="/usr/bin:/usr/local/bin:$PATH"
+          cd /var/www/html/api
+
+          php artisan config:clear
+          php artisan migrate --force
+          php artisan migrate --seed --force 2>/dev/null || true
+          sudo systemctl restart apache2
+
+          # Instances created before the Terraform systemd unit existed won't have `reverb.service`.
+          # Create/overwrite it on every deploy so realtime works without manual server steps.
+          sudo tee /etc/systemd/system/reverb.service > /dev/null <<'SERVICE'
+          [Unit]
+          Description=Laravel Reverb WebSocket server
+          After=network.target
+
+          [Service]
+          Type=simple
+          WorkingDirectory=/var/www/html/api
+          ExecStart=/bin/sh -c 'PHP_BIN="$(command -v php8.3 || command -v php)" && exec "$PHP_BIN" artisan reverb:start --host=0.0.0.0 --port=8080'
+          Restart=always
+          RestartSec=3
+          User=ubuntu
+
+          [Install]
+          WantedBy=multi-user.target
+          SERVICE
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable reverb --now || sudo systemctl restart reverb || true
+          REMOTE
 
       - name: Deploy frontend
         run: |
