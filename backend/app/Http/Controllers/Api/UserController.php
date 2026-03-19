@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Mail\VerifyEmail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends BaseController
@@ -98,15 +96,6 @@ class UserController extends BaseController
         return $this->sendResponse($success, 'User profile avatar removed successfully!');
     }
 
-    public function sendVerificationEmail(Request $request)
-    {
-        $authUser = Auth::user();
-        $user = User::findOrFail($authUser->id);
-        Mail::to($user->email)->send(new VerifyEmail($user->email));
-        $success['status'] = true;
-        return $this->sendResponse($success, 'Email sent to ' . $user->email);
-    }
-
     public function changeEmail(Request $request)
     {
         $request->validate([
@@ -116,9 +105,8 @@ class UserController extends BaseController
         $user = User::findOrFail($authUser->id);
         $user->email = $request->change_email;
         $user->save();
-        Mail::to($user->email)->send(new VerifyEmail($user->email));
         $success['email'] = $user->email;
-        return $this->sendResponse($success, 'Email sent to ' . $user->email);
+        return $this->sendResponse($success, 'Email updated.');
     }
 }
 

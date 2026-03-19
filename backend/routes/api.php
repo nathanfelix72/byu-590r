@@ -21,7 +21,6 @@ Route::controller(RegisterController::class)->group(function () {
     Route::post('forgot_password', 'forgotPassword');
     Route::get('password_reset', 'passwordReset');
     Route::post('password_reset', 'setNewPassword');
-    Route::get('verify_email', 'verifyEmail');
 });
 
 // Protected routes
@@ -30,7 +29,6 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
         Route::get('user', 'getUser');
         Route::post('user/upload_avatar', 'uploadAvatar');
         Route::delete('user/remove_avatar', 'removeAvatar');
-        Route::post('user/send_verification_email', 'sendVerificationEmail');
         Route::post('user/change_email', 'changeEmail');
     });
 

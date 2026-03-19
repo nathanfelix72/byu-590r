@@ -4,12 +4,6 @@ import { CommonModule } from '@angular/common';
 import { AuthStore } from './core/stores/auth.store';
 import { UserStore } from './core/stores/user.store';
 import { UserService } from './core/services/user.service';
-import {
-  FormBuilder,
-  FormGroup,
-  Validators,
-  ReactiveFormsModule,
-} from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,15 +22,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     RouterModule,
     RouterOutlet,
     CommonModule,
-    ReactiveFormsModule,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
     MatDialogModule,
     MatDividerModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
@@ -48,19 +39,11 @@ export class AppComponent implements OnInit {
   protected userStore = inject(UserStore);
   private userService = inject(UserService);
   private router = inject(Router);
-  private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
 
   theme = signal<'light' | 'dark'>('dark');
   profileDialog = signal(false);
   profileIsUploading = signal(false);
-  verificationEmailLoading = signal(false);
-  showEmailNotVerifiedDialog = signal(false);
-  showChangeEmailTextField = signal(false);
-  successVerificationMessage = signal('');
-
-  changeEmailForm: FormGroup;
-  changeEmail = signal('');
 
   profile = signal({
     name: '',
@@ -77,15 +60,6 @@ export class AppComponent implements OnInit {
     const hasLoaded = this.hasLoadedUser();
     return isAuthenticated && user && !hasLoaded;
   });
-
-  constructor() {
-    this.changeEmailForm = this.fb.group({
-      email: [
-        '',
-        [Validators.required, Validators.minLength(3), Validators.email],
-      ],
-    });
-  }
 
   ngOnInit(): void {
     if (this.shouldLoadUser()) {
@@ -135,9 +109,6 @@ export class AppComponent implements OnInit {
         if (response.results.avatar) {
           this.authStore.updateAvatar(response.results.avatar);
         }
-        if (!response.results.email_verified_at) {
-          this.showEmailNotVerifiedDialog.set(true);
-        }
         this.userStore.setUser(response.results);
       },
       error: () => {
@@ -183,62 +154,6 @@ export class AppComponent implements OnInit {
           panelClass: ['error-snackbar'],
         });
         this.profileIsUploading.set(false);
-      },
-    });
-  }
-
-  sendVerificationEmail(): void {
-    const user = this.userStore.user();
-    if (!user) return;
-
-    this.verificationEmailLoading.set(true);
-    this.successVerificationMessage.set('');
-
-    this.userService.sendVerificationEmail({ email: user.email }).subscribe({
-      next: (response: any) => {
-        this.successVerificationMessage.set(
-          response.message || 'Verification email sent!'
-        );
-        this.verificationEmailLoading.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Error. Try again', 'Close', {
-          duration: 5000,
-          horizontalPosition: 'center',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar'],
-        });
-        this.verificationEmailLoading.set(false);
-      },
-    });
-  }
-
-  changeProfileEmail(): void {
-    if (!this.changeEmailForm.valid) return;
-
-    this.verificationEmailLoading.set(true);
-    const changeEmailData = {
-      change_email: this.changeEmailForm.value.email,
-    };
-
-    this.userService.changeEmail(changeEmailData).subscribe({
-      next: () => {
-        this.snackBar.open('Email changed. Check email to verify.', 'Close', {
-          duration: 5000,
-          horizontalPosition: 'center',
-          verticalPosition: 'top',
-        });
-        this.verificationEmailLoading.set(false);
-        this.showChangeEmailTextField.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Error. Try again', 'Close', {
-          duration: 5000,
-          horizontalPosition: 'center',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar'],
-        });
-        this.verificationEmailLoading.set(false);
       },
     });
   }

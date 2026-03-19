@@ -9,7 +9,6 @@ export interface User {
   name: string;
   email: string;
   avatar?: string | null;
-  email_verified_at?: string | null;
 }
 
 @Injectable({
@@ -73,14 +72,6 @@ export class UserService {
       results: { avatar: null };
       message: string;
     }>(`${this.apiUrl}user/remove_avatar`, { headers: this.getAuthHeaders() });
-  }
-
-  sendVerificationEmail(emailData: any): Observable<any> {
-    return this.http.post(
-      `${this.apiUrl}user/send_verification_email`,
-      emailData,
-      { headers: this.getAuthHeaders() }
-    );
   }
 
   changeEmail(changeEmail: {

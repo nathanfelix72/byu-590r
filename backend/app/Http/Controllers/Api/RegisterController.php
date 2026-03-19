@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -138,33 +137,6 @@ class RegisterController extends BaseController
         $user->save();
 
         return $this->sendResponse([], 'Password updated. You can now sign in with your new password.');
-    }
-
-    public function verifyEmail(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email|min:3',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendResponse([], 'Email could not be verified');
-        }
-
-        $email = $request['email'];
-
-        if (!$email) {
-            return $this->sendError('Email Expired or Incorrect.', ['error' => 'Email Expired or Incorrect']);
-        }
-        $user = User::where('email', $email)->first();
-        if (!$user) {
-            return $this->sendError('Email Expired or Incorrect.', ['error' => 'Email Expired or Incorrect']);
-        }
-
-        $user = User::findOrFail($user->id);
-        $user->email_verified_at = now();
-        $user->save();
-
-        return Redirect::to(env('FRONTEND_URL', 'http://localhost:4200') . '/home');
     }
 }
 
