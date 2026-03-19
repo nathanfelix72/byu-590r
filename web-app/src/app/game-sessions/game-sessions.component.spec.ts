@@ -8,6 +8,7 @@ import {
   GameSession,
   GameSessionService,
 } from '../core/services/game-session.service';
+import { GamesService } from '../core/services/games.service';
 
 class MockGameSessionStore {
   private _sessions: GameSession[] = [];
@@ -22,32 +23,75 @@ class MockGameSessionStore {
 }
 
 class MockGameSessionService {
-  getGameSessions() {
-    const sessions: GameSession[] = [
-      {
-        id: 1,
-        name: 'Test Session 1',
-        description: 'Description 1',
-        game_session_cover_picture: 'https://example.com/cover1.jpg',
-        status: 'in_progress',
-        current_turn: 0,
-        created_at: '2025-03-16T12:00:00.000000Z',
-      },
-      {
-        id: 2,
-        name: 'Test Session 2',
-        description: 'Description 2',
-        game_session_cover_picture: null,
-        status: 'waiting',
-        current_turn: null,
-        created_at: '2025-03-15T10:00:00.000000Z',
-      },
-    ];
+  private sessions: GameSession[] = [
+    {
+      id: 1,
+      name: 'Test Session 1',
+      description: 'Description 1',
+      game_session_cover_picture: 'https://example.com/cover1.jpg',
+      status: 'in_progress',
+      current_turn: 0,
+      created_at: '2025-03-16T12:00:00.000000Z',
+    },
+    {
+      id: 2,
+      name: 'Test Session 2',
+      description: 'Description 2',
+      game_session_cover_picture: null,
+      status: 'waiting',
+      current_turn: null,
+      created_at: '2025-03-15T10:00:00.000000Z',
+    },
+  ];
 
+  getMyGameSessions() {
     return of({
       success: true,
-      results: sessions,
+      results: this.sessions,
+      message: 'My Game Sessions',
+    });
+  }
+
+  // Legacy method still referenced elsewhere sometimes
+  getGameSessions() {
+    return of({
+      success: true,
+      results: this.sessions,
       message: 'Game Sessions',
+    });
+  }
+
+  createGameSession() {
+    return of({
+      success: true,
+      results: this.sessions[0],
+      message: 'Game Session created',
+    });
+  }
+
+  joinGameSession() {
+    return of({
+      success: true,
+      results: this.sessions[0],
+      message: 'Joined game session',
+    });
+  }
+
+  joinGameSessionByCode() {
+    return of({
+      success: true,
+      results: this.sessions[0],
+      message: 'Joined game session',
+    });
+  }
+}
+
+class MockGamesService {
+  getGames() {
+    return of({
+      success: true,
+      results: [{ id: 1, key: 'uno', name: 'Uno', rules_version: 'v1', min_players: 2, max_players: 4 }],
+      message: 'Games',
     });
   }
 }
@@ -67,6 +111,7 @@ describe('GameSessionsComponent', () => {
         provideHttpClientTesting(),
         { provide: GameSessionStore, useValue: store },
         { provide: GameSessionService, useClass: MockGameSessionService },
+        { provide: GamesService, useClass: MockGamesService },
       ],
     }).compileComponents();
 
@@ -82,26 +127,18 @@ describe('GameSessionsComponent', () => {
   it('should load and display game sessions in table', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const rows = compiled.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
-
-    const firstRowCells = rows[0].querySelectorAll('td');
-    expect(firstRowCells[1].textContent).toContain('Test Session 1');
-    expect(firstRowCells[2].textContent).toContain('Description 1');
-    expect(firstRowCells[3].textContent).toContain('in_progress');
-    expect(firstRowCells[4].textContent).toContain('1'); // current_turn 0 displayed as "1"
-
-    const secondRowCells = rows[1].querySelectorAll('td');
-    expect(secondRowCells[1].textContent).toContain('Test Session 2');
-    expect(secondRowCells[2].textContent).toContain('Description 2');
-    expect(secondRowCells[3].textContent).toContain('waiting');
-    expect(secondRowCells[4].textContent).toContain('—');
+    const cards = compiled.querySelectorAll('.sessionCard');
+    expect(cards.length).toBe(2);
+    expect(cards[0].textContent).toContain('Test Session 1');
+    expect(cards[0].textContent).toContain('in_progress');
+    expect(cards[1].textContent).toContain('Test Session 2');
+    expect(cards[1].textContent).toContain('waiting');
   });
 
   it('should bind image src correctly', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const images = compiled.querySelectorAll('tbody tr img');
+    const images = compiled.querySelectorAll('.sessionCard img');
 
     expect(images[0].getAttribute('src')).toBe(
       'https://example.com/cover1.jpg'
