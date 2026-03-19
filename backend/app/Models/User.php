@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -63,6 +64,18 @@ class User extends Authenticatable
     public function tokens(): MorphMany
     {
         return $this->morphMany(PersonalAccessToken::class, 'tokenable');
+    }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    public function gameSessions(): BelongsToMany
+    {
+        return $this->belongsToMany(GameSession::class, 'user_game_sessions', 'user_id', 'game_session_id')
+            ->withPivot(['seat', 'score', 'is_ready', 'left_at', 'is_ai'])
+            ->withTimestamps();
     }
 
     public function createToken(string $name, array $abilities = ['*']): PersonalAccessToken

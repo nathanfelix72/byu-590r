@@ -18,6 +18,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'game-sessions/:id',
+    loadComponent: () =>
+      import('./game-sessions/detail/game-session-detail.component').then(
+        (m) => m.GameSessionDetailComponent
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./auth/login/login.component').then((m) => m.LoginComponent),

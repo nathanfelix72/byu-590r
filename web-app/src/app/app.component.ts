@@ -10,10 +10,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
 
 @Component({
   selector: 'app-root',
@@ -30,6 +30,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatDividerModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatSidenavModule,
+    MatListModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -44,6 +46,7 @@ export class AppComponent implements OnInit {
   theme = signal<'light' | 'dark'>('dark');
   profileDialog = signal(false);
   profileIsUploading = signal(false);
+  sidenavOpen = signal(true);
 
   profile = signal({
     name: '',
@@ -87,6 +90,10 @@ export class AppComponent implements OnInit {
 
   changeTheme(): void {
     this.theme.set(this.theme() === 'light' ? 'dark' : 'light');
+  }
+
+  toggleSidenav(): void {
+    this.sidenavOpen.set(!this.sidenavOpen());
   }
 
   logout(): void {

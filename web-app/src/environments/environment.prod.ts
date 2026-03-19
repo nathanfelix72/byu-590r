@@ -2,4 +2,12 @@
 export const environment = {
   production: true,
   apiUrl: 'http://__EC2_HOST__:4444/api/',
+  ws: {
+    broadcaster: 'reverb',
+    key: 'local',
+    wsHost: '__EC2_HOST__',
+    wsPort: 4444,
+    wssPort: 4444,
+    forceTLS: false,
+  }
 };

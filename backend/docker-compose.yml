@@ -12,6 +12,19 @@ services:
             mysql:
                 condition: service_healthy
 
+    reverb:
+        build: .
+        container_name: app_reverb
+        restart: unless-stopped
+        working_dir: /var/www
+        command: php artisan reverb:start --host=0.0.0.0 --port=8080
+        volumes:
+            - .:/var/www
+        networks:
+            - app_network
+        depends_on:
+            - app
+
     nginx:
         image: nginx:alpine
         container_name: app_nginx

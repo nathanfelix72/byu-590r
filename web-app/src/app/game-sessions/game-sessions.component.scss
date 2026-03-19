@@ -1,22 +1,72 @@
-.game-sessions-table {
-  width: 100%;
-  border-collapse: collapse;
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
-.game-sessions-table th,
-.game-sessions-table td {
-  border: 1px solid #e5e7eb;
-  padding: 0.75rem;
-  text-align: left;
+.panel {
+  margin-bottom: 16px;
 }
 
-.cover-cell {
-  width: 160px;
+.form {
+  display: grid;
+  gap: 12px;
 }
 
-.cover-image {
-  width: 150px;
-  height: auto;
+.form__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.sessionCard {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.sessionCard__content {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 12px;
+  align-items: center;
+}
+
+.sessionCard__title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-bottom: 4px;
+}
+
+.sessionCard__desc {
+  opacity: 0.85;
+  margin-bottom: 10px;
+}
+
+.sessionCard__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+}
+
+.chip--status {
+  background: rgba(25, 118, 210, 0.12);
+}
+
+.sessionCard__cover img {
+  width: 140px;
+  height: 92px;
   object-fit: cover;
+  border-radius: 12px;
 }
 

@@ -9,6 +9,11 @@ export interface User {
   name: string;
   email: string;
   avatar?: string | null;
+  profile?: {
+    wins: number;
+    losses: number;
+    rating?: number | null;
+  } | null;
 }
 
 @Injectable({

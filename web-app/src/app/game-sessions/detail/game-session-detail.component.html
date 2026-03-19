@@ -1,0 +1,103 @@
+<section class="page">
+  @if (session()) {
+    <header class="page__header">
+      <div>
+        <div class="page__title">{{ session()!.name }}</div>
+        <div class="page__subtitle">
+          Status: <strong>{{ session()!.status }}</strong>
+          @if (session()!.join_code) {
+            <span class="code">Join code: {{ session()!.join_code }}</span>
+          }
+        </div>
+      </div>
+      <div class="actions">
+        <button mat-stroked-button (click)="refresh()">Refresh</button>
+        <button mat-stroked-button color="warn" (click)="leave()">Leave</button>
+        <button mat-flat-button color="primary" (click)="start()">Start</button>
+      </div>
+    </header>
+
+    @if (session()!.status === 'in_progress' && unoState) {
+      <div class="turnBanner" [class.turnBanner--mine]="isMyTurn">
+        <div class="turnBanner__title">
+          @if (isMyTurn) { Your turn } @else { {{ currentTurnName }}’s turn }
+        </div>
+        <div class="turnBanner__sub">
+          Current color: <strong>{{ unoState.currentColor }}</strong>
+          @if (unoState.pendingDraw > 0) { · Pending draw: {{ unoState.pendingDraw }} }
+        </div>
+      </div>
+    }
+
+    <div class="grid">
+      <mat-card>
+        <mat-card-title>Lobby</mat-card-title>
+        <mat-card-content>
+          <p class="muted">{{ session()!.description }}</p>
+          <div class="row">
+            <button mat-stroked-button (click)="toggleReady()">I’m ready</button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-title>Players</mat-card-title>
+        <mat-card-content>
+          <mat-list>
+            @for (p of playersList(); track p.id) {
+              <mat-list-item>
+                <span class="player">
+                  <span class="player__name">{{ p.user?.name || ('Player ' + p.user_id) }}</span>
+                  <span class="player__meta">Seat {{ p.seat ?? '—' }}</span>
+                  @if (unoState && p.user_id === currentTurnUserId && session()!.status === 'in_progress') {
+                    <span class="pill">turn</span>
+                  }
+                  @if (p.is_ready) { <span class="ready">ready</span> }
+                </span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    @if (session()!.status === 'in_progress' && unoState) {
+      <mat-card class="playArea">
+        <mat-card-title>Uno</mat-card-title>
+        <mat-card-content>
+          <div class="board">
+            <div class="pile">
+              <div class="label">Top card</div>
+              <div class="card">
+                {{ unoState.discard?.[unoState.discard.length - 1]?.color }}
+                {{ unoState.discard?.[unoState.discard.length - 1]?.value }}
+              </div>
+              <div class="meta">
+                <strong>{{ currentTurnName }}</strong>
+                @if (isMyTurn) { (you) }
+              </div>
+              <button mat-stroked-button (click)="draw()" [disabled]="!isMyTurn">Draw</button>
+            </div>
+
+            <div class="hand">
+              <div class="label">Your hand</div>
+              <div class="hand__grid">
+                @for (c of myHand(); track $index) {
+                  <button class="handCard" type="button" (click)="playCard($index)" [disabled]="!isMyTurn">
+                    <span class="handCard__c">{{ c.color }}</span>
+                    <span class="handCard__v">{{ c.value }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  } @else {
+    <mat-card>
+      <mat-card-content>Loading…</mat-card-content>
+    </mat-card>
+  }
+</section>
+

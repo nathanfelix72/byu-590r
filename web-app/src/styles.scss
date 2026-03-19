@@ -40,6 +40,36 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: spacing.$spacing-medium;
+  margin-bottom: spacing.$spacing-medium;
+}
+
+.page__title {
+  font-size: fonts.$font-size-2xl;
+  font-weight: fonts.$font-weight-semibold;
+  letter-spacing: 0.2px;
+}
+
+.page__subtitle {
+  margin-top: spacing.$spacing-extra-small;
+  color: colors.$colors-text-secondary;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: spacing.$spacing-medium;
+}
+
 ::ng-deep {
   .error-snackbar {
     .mdc-snackbar__surface {
@@ -52,4 +82,11 @@ body {
     background: transparent !important;
     padding: 0 !important;
   }
+
+  .mat-mdc-card {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06) !important;
+    border-radius: 14px !important;
+  }
 }
+

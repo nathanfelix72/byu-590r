@@ -1,35 +1,125 @@
-<table class="game-sessions-table">
-  <thead>
-    <tr>
-      <th>Cover</th>
-      <th>Name</th>
-      <th>Description</th>
-      <th>Status</th>
-      <th>Current Turn</th>
-      <th>Created At</th>
-    </tr>
-  </thead>
-  <tbody>
+<section class="page">
+  <header class="page__header">
+    <div>
+      <div class="page__title">Game sessions</div>
+      <div class="page__subtitle">
+        Create a lobby, invite friends, and play asynchronously.
+      </div>
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="openJoin()">Join</button>
+      <button mat-flat-button color="primary" (click)="openCreate()">
+        Create
+      </button>
+    </div>
+  </header>
+
+  @if (createOpen()) {
+    <mat-card class="panel">
+      <mat-card-title>Create session</mat-card-title>
+      <mat-card-content>
+        <form [formGroup]="createForm" class="form">
+          <mat-form-field appearance="outline">
+            <mat-label>Game</mat-label>
+            <mat-select formControlName="game_id">
+              @for (g of games(); track g.id) {
+                <mat-option [value]="g.id">{{ g.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput rows="3" formControlName="description"></textarea>
+          </mat-form-field>
+
+          <div class="form__footer">
+            <button mat-button type="button" (click)="createOpen.set(false)">
+              Cancel
+            </button>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="submitCreate()"
+              [disabled]="!createForm.valid"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (joinOpen()) {
+    <mat-card class="panel">
+      <mat-card-title>Join session</mat-card-title>
+      <mat-card-content>
+        <form [formGroup]="joinForm" class="form">
+          <mat-form-field appearance="outline">
+            <mat-label>Session ID (optional)</mat-label>
+            <input matInput type="number" formControlName="id" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Join code (optional)</mat-label>
+            <input matInput formControlName="join_code" />
+          </mat-form-field>
+
+          <div class="form__footer">
+            <button mat-button type="button" (click)="joinOpen.set(false)">
+              Cancel
+            </button>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="submitJoin()"
+              [disabled]="!joinForm.valid"
+            >
+              Join
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <div class="card-grid">
     @for (session of gameSessions(); track session.id) {
-      <tr>
-        <td class="cover-cell">
-          <img
-            [src]="
-              session.game_session_cover_picture
-                ? session.game_session_cover_picture
-                : 'assets/images/default-game-session.png'
-            "
-            alt="Game session cover"
-            class="cover-image"
-          />
-        </td>
-        <td>{{ session.name }}</td>
-        <td>{{ session.description }}</td>
-        <td>{{ session.status }}</td>
-        <td>{{ session.current_turn !== null ? session.current_turn + 1 : '—' }}</td>
-        <td>{{ session.created_at | date:'short' }}</td>
-      </tr>
+      <a class="sessionCard" [routerLink]="['/game-sessions', session.id]">
+        <mat-card>
+          <mat-card-content class="sessionCard__content">
+            <div class="sessionCard__meta">
+              <div class="sessionCard__title">{{ session.name }}</div>
+              <div class="sessionCard__desc">{{ session.description }}</div>
+              <div class="sessionCard__chips">
+                <span class="chip chip--status">{{ session.status }}</span>
+                @if (session.join_code) {
+                  <span class="chip">Code: {{ session.join_code }}</span>
+                }
+              </div>
+            </div>
+            <div class="sessionCard__cover">
+              <img
+                [src]="
+                  session.game_session_cover_picture
+                    ? session.game_session_cover_picture
+                    : 'assets/images/default-game-session.png'
+                "
+                alt="Cover"
+              />
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </a>
     }
-  </tbody>
-</table>
+  </div>
+</section>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,10 @@ class UserController extends BaseController
     public function getUser()
     {
         $authUser = Auth::user();
-        $user = User::findOrFail($authUser->id);
+        $user = User::with('profile')->findOrFail($authUser->id);
+        if (!$user->profile) {
+            $user->profile = Profile::create(['user_id' => $user->id, 'wins' => 0, 'losses' => 0]);
+        }
         $user->avatar = $this->getS3Url($user->avatar);
         return $this->sendResponse($user, 'User');
     }

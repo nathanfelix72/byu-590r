@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BookController;
+use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\HelloWorldController;
 use App\Http\Controllers\Api\GameSessionController;
 use App\Http\Controllers\Api\RegisterController;
@@ -40,5 +41,21 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
         Route::post('send_book_report', 'sendBookReport');
     });
 
+    Route::get('games', [GameController::class, 'index']);
+
+    // Legacy list endpoint (kept for backward compatibility with existing frontend)
     Route::apiResource('gamesessions', GameSessionController::class)->only(['index']);
+
+    // New sessions API
+    Route::controller(GameSessionController::class)->group(function () {
+        Route::get('game-sessions', 'myIndex');
+        Route::post('game-sessions/join', 'joinByCode');
+        Route::post('game-sessions', 'store');
+        Route::get('game-sessions/{id}', 'show');
+        Route::post('game-sessions/{id}/join', 'join');
+        Route::post('game-sessions/{id}/leave', 'leave');
+        Route::post('game-sessions/{id}/ready', 'ready');
+        Route::post('game-sessions/{id}/start', 'start');
+        Route::post('game-sessions/{id}/moves', 'move');
+    });
 });

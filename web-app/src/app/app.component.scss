@@ -16,32 +16,34 @@
   background-color: colors.$colors-primary !important;
   color: colors.$colors-white !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: spacing.$spacing-small;
+}
+
+.app-bar__menu {
+  margin-right: spacing.$spacing-extra-small;
+}
+
+.app-bar__brand {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.1;
+}
+
+.app-bar__brandTitle {
+  font-weight: fonts.$font-weight-semibold;
+  letter-spacing: 0.2px;
+}
+
+.app-bar__brandTag {
+  font-size: fonts.$font-size-sm;
+  opacity: 0.85;
 }
 
 .app-bar-spacer {
   flex: 1;
-}
-
-.nav-buttons {
-  display: flex;
-  gap: spacing.$spacing-small;
-
-  a {
-    color: colors.$colors-white !important;
-    text-decoration: none;
-    padding: spacing.$spacing-extra-small spacing.$spacing-small;
-    border-radius: spacing.$border-radius-extra-small;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    &.active {
-      background-color: colors.$colors-primary-dark;
-      font-weight: fonts.$font-weight-medium;
-    }
-  }
 }
 
 .avatar-button {
@@ -69,6 +71,37 @@
     color: colors.$colors-text-primary;
     @include fonts.fonts-h3;
   }
+}
+
+.layout {
+  min-height: calc(100vh - 64px);
+  background: colors.$colors-background;
+}
+
+.layout__sidenav {
+  width: 260px;
+  border-right: 1px solid colors.$colors-divider;
+  background: colors.$colors-surface;
+}
+
+.layout__content {
+  background: colors.$colors-background;
+}
+
+.nav {
+  padding: spacing.$spacing-medium;
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-extra-small;
+}
+
+.nav__icon {
+  margin-right: spacing.$spacing-small;
+}
+
+.nav__active {
+  background: rgba(25, 118, 210, 0.08);
+  border-radius: spacing.$border-radius-small;
 }
 
 .app-main {

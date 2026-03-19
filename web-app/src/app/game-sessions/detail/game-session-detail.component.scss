@@ -1,0 +1,164 @@
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.code {
+  margin-left: 12px;
+  opacity: 0.9;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.muted {
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+
+.player {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player__name {
+  font-weight: 600;
+}
+
+.player__meta {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(25, 118, 210, 0.12);
+  font-size: 12px;
+}
+
+.ready {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.12);
+  font-size: 12px;
+}
+
+.turnBanner {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.turnBanner--mine {
+  background: rgba(46, 125, 50, 0.08);
+  border-color: rgba(46, 125, 50, 0.18);
+}
+
+.turnBanner__title {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  margin-bottom: 4px;
+}
+
+.turnBanner__sub {
+  opacity: 0.85;
+}
+
+.playArea {
+  margin-top: 16px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.label {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.pile .card {
+  width: 160px;
+  height: 220px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  display: grid;
+  place-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.meta {
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+
+.hand__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.handCard {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
+  padding: 14px 10px;
+  background: white;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.handCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+}
+
+.handCard__c {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.handCard__v {
+  font-weight: 700;
+}
+
+.handCard[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+

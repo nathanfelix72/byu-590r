@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Mail\ForgotPassword;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -32,6 +33,7 @@ class RegisterController extends BaseController
         $input['password'] = bcrypt($input['password']);
         unset($input['first_name'], $input['last_name'], $input['password_confirmation']);
         $user = User::create($input);
+        Profile::updateOrCreate(['user_id' => $user->id], ['wins' => 0, 'losses' => 0]);
         $token = $user->createToken('MyApp');
         $success['token'] = $token->plainTextToken;
         $success['name'] = $user->name;
