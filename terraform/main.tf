@@ -222,7 +222,7 @@ if [ -d "/var/www/html/api/storage" ]; then
     sudo chmod -R 775 /var/www/html/api/storage/app
 fi
 
-# Create .env file if it doesn't exist
+# Create .env file if it doesn't exist (backend deploy will later sync real values)
 if [ ! -f /var/www/html/api/.env ]; then
     if [ -f /var/www/html/api/.env.example ]; then
         sudo cp /var/www/html/api/.env.example /var/www/html/api/.env
@@ -233,6 +233,29 @@ if [ ! -f /var/www/html/api/.env ]; then
         echo "[INFO] .env.example not found - .env will be created during deployment"
     fi
 fi
+
+# Install and enable Reverb WebSocket server as a systemd service.
+# It may restart until the Laravel code/artisan exists; that's OK.
+sudo tee /etc/systemd/system/reverb.service > /dev/null << 'REVERB_UNIT'
+[Unit]
+Description=Laravel Reverb WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/html/api
+ExecStart=/usr/bin/php artisan reverb:start --host=0.0.0.0 --port=8080
+Restart=always
+RestartSec=3
+User=www-data
+
+[Install]
+WantedBy=multi-user.target
+REVERB_UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable reverb || true
+sudo systemctl start reverb || true
 
 # Ensure Apache is running and enabled (fix connection refused on port 80)
 sudo systemctl enable apache2
