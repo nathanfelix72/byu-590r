@@ -1,0 +1,23 @@
+<div
+  class="card"
+  [class.card--down]="faceDown"
+  [class.card--sm]="size === 'sm'"
+  [class.card--md]="size === 'md'"
+  [class.card--lg]="size === 'lg'"
+  [attr.data-color]="colorName"
+>
+  @if (!faceDown) {
+    <div class="card__frame">
+      <div class="card__oval">
+        <div class="card__corner card__corner--tl">{{ glyph }}</div>
+        <div class="card__glyph">{{ glyph }}</div>
+        <div class="card__corner card__corner--br">{{ glyph }}</div>
+      </div>
+    </div>
+  } @else {
+    <div class="card__back">
+      <div class="card__backOval">UNO</div>
+    </div>
+  }
+</div>
+

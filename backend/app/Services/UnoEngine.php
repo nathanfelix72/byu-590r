@@ -8,7 +8,7 @@ class UnoEngine
 {
     public const COLORS = ['r', 'g', 'b', 'y'];
 
-    public function initState(array $userIds): array
+    public function initState(array $userIds, array $rules = []): array
     {
         $deck = $this->buildDeck();
         $this->shuffle($deck);
@@ -25,7 +25,9 @@ class UnoEngine
             }
         }
 
-        // Start discard with a non-wild if possible
+        $rules = array_merge($this->defaultRules(), $rules);
+
+        // Start discard (optionally applying action effects based on rules)
         $discard = [];
         while (!empty($deck)) {
             $card = array_pop($deck);
@@ -41,9 +43,10 @@ class UnoEngine
         $currentColor = $currentColor ?? ($top['color'] === 'w' ? 'r' : $top['color']);
         $currentValue = $currentValue ?? $top['value'];
 
-        return [
+        $state = [
             'type' => 'uno',
             'version' => 1,
+            'rules' => $rules,
             'players' => $players,
             'deck' => array_values($deck),
             'discard' => array_values($discard),
@@ -55,6 +58,12 @@ class UnoEngine
             'winnerUserId' => null,
             'moveHistory' => [],
         ];
+
+        if (($rules['startingCardActionsApply'] ?? false) === true) {
+            $state = $this->applyStartingCardEffects($state);
+        }
+
+        return $state;
     }
 
     public function applyMove(array $state, int $userId, array $move): array
@@ -73,9 +82,11 @@ class UnoEngine
         $type = Arr::get($move, 'type');
         $payload = Arr::get($move, 'payload', []);
 
+        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
+
         if (($state['pendingDraw'] ?? 0) > 0) {
-            // MVP rule: if you owe draws, your only legal move is to draw them now.
-            if ($type !== 'draw') {
+            $allowStacking = (bool) ($rules['allowStackingDraw2'] ?? false) || (bool) ($rules['allowStackingDraw4'] ?? false);
+            if ($type !== 'draw' && !$allowStacking) {
                 throw new \RuntimeException('You must draw the pending cards.');
             }
         }
@@ -91,6 +102,7 @@ class UnoEngine
     {
         $idx = (int) Arr::get($payload, 'cardIndex', -1);
         $chosenColor = Arr::get($payload, 'chosenColor'); // for wild
+        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
 
         [$playerIndex, $player] = $this->findPlayer($state, $userId);
         $hand = $player['hand'] ?? [];
@@ -101,6 +113,20 @@ class UnoEngine
         $card = $hand[$idx];
         if (!$this->isPlayable($state, $card)) {
             throw new \RuntimeException('Card is not playable.');
+        }
+
+        // Classic rule: Wild Draw 4 only legal if you have no card matching current color.
+        if (($rules['allowWildDraw4OnlyIfNoMatch'] ?? false) === true && ($card['value'] ?? null) === 'wild_draw4') {
+            $hasColorMatch = false;
+            foreach ($hand as $h) {
+                if (($h['color'] ?? null) !== 'w' && ($h['color'] ?? null) === ($state['currentColor'] ?? null)) {
+                    $hasColorMatch = true;
+                    break;
+                }
+            }
+            if ($hasColorMatch) {
+                throw new \RuntimeException('Wild Draw 4 is only allowed when you have no matching color.');
+            }
         }
 
         // Remove from hand, push to discard
@@ -155,15 +181,30 @@ class UnoEngine
     {
         [$playerIndex, $player] = $this->findPlayer($state, $userId);
 
+        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
         $drawCount = (int) ($state['pendingDraw'] ?? 0);
-        if ($drawCount <= 0) {
-            $drawCount = 1;
-        }
+        if ($drawCount <= 0) $drawCount = 1;
 
-        for ($i = 0; $i < $drawCount; $i++) {
-            $state = $this->ensureDeck($state);
-            $card = array_pop($state['deck']);
-            $state['players'][$playerIndex]['hand'][] = $card;
+        // drawToMatch: draw until playable (cap to prevent infinite loops), otherwise draw fixed count
+        if (($rules['drawToMatch'] ?? false) === true && ($state['pendingDraw'] ?? 0) === 0) {
+            $cap = 20;
+            $drawn = 0;
+            while ($drawn < $cap) {
+                $state = $this->ensureDeck($state);
+                $card = array_pop($state['deck']);
+                $state['players'][$playerIndex]['hand'][] = $card;
+                $drawn++;
+                if ($this->isPlayable($state, $card)) {
+                    break;
+                }
+            }
+            $drawCount = $drawn;
+        } else {
+            for ($i = 0; $i < $drawCount; $i++) {
+                $state = $this->ensureDeck($state);
+                $card = array_pop($state['deck']);
+                $state['players'][$playerIndex]['hand'][] = $card;
+            }
         }
 
         $state['moveHistory'][] = [
@@ -177,6 +218,37 @@ class UnoEngine
 
         // MVP rule: drawing ends your turn.
         $state = $this->advanceTurn($state, false);
+        return $state;
+    }
+
+    private function defaultRules(): array
+    {
+        return [
+            'allowStackingDraw2' => false,
+            'allowStackingDraw4' => false,
+            'drawToMatch' => false,
+            'forcePlayIfPossible' => false,
+            'allowWildDraw4OnlyIfNoMatch' => true,
+            'startingCardActionsApply' => true,
+            'unoCallRequired' => false,
+            'unoPenaltyCards' => 2,
+        ];
+    }
+
+    private function applyStartingCardEffects(array $state): array
+    {
+        $discard = $state['discard'] ?? [];
+        if (!is_array($discard) || count($discard) === 0) return $state;
+        $top = $discard[count($discard) - 1];
+        $value = $top['value'] ?? null;
+        if ($value === 'reverse') {
+            $state['direction'] = -1;
+        } elseif ($value === 'skip') {
+            $state = $this->advanceTurn($state, true);
+        } elseif ($value === 'draw2') {
+            $state['pendingDraw'] = 2;
+            $state = $this->advanceTurn($state, true);
+        }
         return $state;
     }
 

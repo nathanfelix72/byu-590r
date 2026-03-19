@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\GameSession;
 use App\Models\UserGameSession;
 use App\Events\GameSessionUpdated;
+use App\Events\UnoMoveApplied;
 use App\Services\UnoEngine;
 use App\Models\Profile;
 use Illuminate\Http\Request;
@@ -292,7 +293,7 @@ class GameSessionController extends BaseController
 
         if ($session->game && $session->game->key === 'uno') {
             $userIds = $activePlayers->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all();
-            $session->state = $this->uno->initState($userIds);
+            $session->state = $this->uno->initState($userIds, is_array($session->rules) ? $session->rules : []);
         }
         $session->status = 'in_progress';
         $session->current_turn = 0;
@@ -357,6 +358,11 @@ class GameSessionController extends BaseController
                 return $this->sendError('Invalid move.', ['error' => $e->getMessage()], 422);
             }
 
+            $lastMove = [];
+            if (isset($newState['moveHistory']) && is_array($newState['moveHistory']) && count($newState['moveHistory']) > 0) {
+                $lastMove = $newState['moveHistory'][count($newState['moveHistory']) - 1];
+            }
+
             // Keep DB-level turn marker aligned with state for quick querying
             $session->state = $newState;
             $session->current_turn = (int) ($newState['currentTurn'] ?? 0);
@@ -381,7 +387,42 @@ class GameSessionController extends BaseController
             $session->save();
             $session->load(['game', 'host', 'players.user']);
 
+            // Old generic event (kept for other UI pieces)
             event(new GameSessionUpdated($session->id));
+
+            // New no-refresh realtime payload for Uno table UI
+            $handCounts = [];
+            if (is_array($newState['players'] ?? null)) {
+                foreach ($newState['players'] as $p) {
+                    $uid = (int) ($p['user_id'] ?? 0);
+                    if ($uid > 0) {
+                        $hand = $p['hand'] ?? [];
+                        $handCounts[$uid] = is_array($hand) ? count($hand) : 0;
+                    }
+                }
+            }
+
+            $publicState = [
+                'type' => 'uno',
+                'currentTurn' => (int) ($newState['currentTurn'] ?? 0),
+                'currentColor' => $newState['currentColor'] ?? null,
+                'currentValue' => $newState['currentValue'] ?? null,
+                'direction' => (int) ($newState['direction'] ?? 1),
+                'pendingDraw' => (int) ($newState['pendingDraw'] ?? 0),
+                'winnerUserId' => $newState['winnerUserId'] ?? null,
+                // top discard is public
+                'topCard' => is_array($newState['discard'] ?? null) && count($newState['discard']) > 0
+                    ? $newState['discard'][count($newState['discard']) - 1]
+                    : null,
+            ];
+
+            event(new UnoMoveApplied(
+                (int) $session->id,
+                (int) $session->version,
+                $publicState,
+                $handCounts,
+                is_array($lastMove) ? $lastMove : []
+            ));
 
             return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Move applied');
         });

@@ -62,37 +62,40 @@
     </div>
 
     @if (session()!.status === 'in_progress' && unoState) {
-      <mat-card class="playArea">
-        <mat-card-title>Uno</mat-card-title>
-        <mat-card-content>
-          <div class="board">
-            <div class="pile">
-              <div class="label">Top card</div>
-              <div class="card">
-                {{ unoState.discard?.[unoState.discard.length - 1]?.color }}
-                {{ unoState.discard?.[unoState.discard.length - 1]?.value }}
-              </div>
-              <div class="meta">
-                <strong>{{ currentTurnName }}</strong>
-                @if (isMyTurn) { (you) }
-              </div>
-              <button mat-stroked-button (click)="draw()" [disabled]="!isMyTurn">Draw</button>
-            </div>
+      <div class="unoTable">
+        <div class="unoTable__felt">
+          <div class="opponents">
+            @for (p of (unoState.players || []); track p.user_id) {
+              @if (p.user_id !== myUserId) {
+                <div class="opponent" [class.opponent--active]="p.user_id === currentTurnUserId">
+                  <div class="opponent__name">{{ nameForUserId(p.user_id) }}</div>
+                  <div class="opponent__count">{{ p.handCount ?? '—' }} cards</div>
+                </div>
+              }
+            }
+          </div>
 
-            <div class="hand">
-              <div class="label">Your hand</div>
-              <div class="hand__grid">
-                @for (c of myHand(); track $index) {
-                  <button class="handCard" type="button" (click)="playCard($index)" [disabled]="!isMyTurn">
-                    <span class="handCard__c">{{ c.color }}</span>
-                    <span class="handCard__v">{{ c.value }}</span>
-                  </button>
-                }
+          <div class="center">
+          <div class="center__stack">
+            <app-uno-card [card]="(unoState.discard?.[unoState.discard.length - 1])" size="lg"></app-uno-card>
+              <div class="deck">
+                <app-uno-card [card]="{color:'w', value:'wild'}" [faceDown]="true" size="lg"></app-uno-card>
               </div>
+            </div>
+            <button mat-stroked-button class="drawBtn" (click)="draw()" [disabled]="!isMyTurn">Draw</button>
+          </div>
+
+          <div class="myHand">
+            <div class="myHand__rail" [class.myHand__rail--disabled]="!isMyTurn">
+              @for (c of myHand(); track $index) {
+                <button class="fanCard" type="button" (click)="playCard($index)" [disabled]="!isMyTurn">
+                  <app-uno-card [card]="c" size="md"></app-uno-card>
+                </button>
+              }
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
+      </div>
     }
   } @else {
     <mat-card>

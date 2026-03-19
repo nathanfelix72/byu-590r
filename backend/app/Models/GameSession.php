@@ -24,12 +24,14 @@ class GameSession extends Model
         'join_code',
         'state',
         'version',
+        'rules',
     ];
 
     protected $casts = [
         'state' => 'array',
         'version' => 'integer',
         'current_turn' => 'integer',
+        'rules' => 'array',
     ];
 
     public function game(): BelongsTo

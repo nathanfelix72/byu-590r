@@ -8,6 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { GameSessionService, GameSession } from '../../core/services/game-session.service';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { UserStore } from '../../core/stores/user.store';
+import { UnoCardComponent } from '../../uno/uno-card/uno-card.component';
 
 @Component({
   selector: 'app-game-session-detail',
@@ -19,6 +20,7 @@ import { UserStore } from '../../core/stores/user.store';
     MatButtonModule,
     MatSnackBarModule,
     MatListModule,
+    UnoCardComponent,
   ],
   templateUrl: './game-session-detail.component.html',
   styleUrl: './game-session-detail.component.scss',
@@ -53,6 +55,50 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
       .private(channelName)
       .listen('.GameSessionUpdated', (payload: any) => {
         if (payload?.gameSessionId) this.refresh();
+      })
+      .listen('.UnoMoveApplied', (payload: any) => {
+        // No-refresh update path: apply public state + card counts.
+        const s: any = this.session();
+        if (!s || payload?.gameSessionId !== s.id) return;
+
+        const nextVersion = Number(payload?.serverVersion);
+        const curVersion = Number(s.version ?? 0);
+        if (!Number.isFinite(nextVersion) || nextVersion <= curVersion) return;
+
+        const state: any = s.state;
+        if (!state || state.type !== 'uno') return;
+
+        const publicState = payload?.publicState;
+        const handCounts = payload?.handCountsByUserId || {};
+
+        // Update public fields
+        state.currentTurn = publicState?.currentTurn ?? state.currentTurn;
+        state.currentColor = publicState?.currentColor ?? state.currentColor;
+        state.currentValue = publicState?.currentValue ?? state.currentValue;
+        state.direction = publicState?.direction ?? state.direction;
+        state.pendingDraw = publicState?.pendingDraw ?? state.pendingDraw;
+        state.winnerUserId = publicState?.winnerUserId ?? state.winnerUserId;
+        if (publicState?.topCard) {
+          state.discard = Array.isArray(state.discard) ? state.discard : [];
+          // append if different; keep simple for now
+          state.discard.push(publicState.topCard);
+        }
+
+        // Update per-player counts (don’t touch my hand)
+        if (Array.isArray(state.players)) {
+          state.players = state.players.map((p: any) => {
+            const uid = Number(p.user_id);
+            const hc = handCounts?.[uid];
+            if (typeof hc === 'number') return { ...p, handCount: hc };
+            return p;
+          });
+        }
+
+        this.session.set({
+          ...(s as any),
+          version: nextVersion,
+          state,
+        });
       });
   }
 
