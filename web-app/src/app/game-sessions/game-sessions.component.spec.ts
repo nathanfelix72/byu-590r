@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { GameSessionsComponent } from './game-sessions.component';
 import { GameSessionStore } from '../core/stores/game-session.store';
@@ -109,6 +110,7 @@ describe('GameSessionsComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: GameSessionStore, useValue: store },
         { provide: GameSessionService, useClass: MockGameSessionService },
         { provide: GamesService, useClass: MockGamesService },
