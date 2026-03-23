@@ -577,6 +577,14 @@
   &.loading {
     pointer-events: none;
   }
+
+  // Single root wrapper for @if/@else button content (fixes mat-button content projection + control flow)
+  .button-inner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
   
   .button-spinner {
     margin-right: 0.5rem;

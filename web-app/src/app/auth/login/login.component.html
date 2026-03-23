@@ -93,11 +93,15 @@
                   [disabled]="isLoading()"
                   (click)="submitLogin()">
                   @if (isLoading()) {
-                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
-                    <span>Signing In...</span>
+                    <span class="button-inner">
+                      <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                      <span>Signing In...</span>
+                    </span>
                   } @else {
-                    <mat-icon>login</mat-icon>
-                    <span>Sign In</span>
+                    <span class="button-inner">
+                      <mat-icon matButtonIcon>login</mat-icon>
+                      <span>Sign In</span>
+                    </span>
                   }
                 </button>
                 <button 
@@ -156,11 +160,15 @@
                   [disabled]="!forgotPasswordForm.valid || submitForgotPasswordLoading()"
                   (click)="submitForgotPassword()">
                   @if (submitForgotPasswordLoading()) {
-                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
-                    <span>Sending...</span>
+                    <span class="button-inner">
+                      <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                      <span>Sending...</span>
+                    </span>
                   } @else {
-                    <mat-icon>send</mat-icon>
-                    <span>Send Reset Link</span>
+                    <span class="button-inner">
+                      <mat-icon matButtonIcon>send</mat-icon>
+                      <span>Send Reset Link</span>
+                    </span>
                   }
                 </button>
               </div>
@@ -240,11 +248,15 @@
                   [disabled]="!registerForm.valid || registerFormIsLoading()"
                   (click)="submitRegister()">
                   @if (registerFormIsLoading()) {
-                    <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
-                    <span>Creating Account...</span>
+                    <span class="button-inner">
+                      <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                      <span>Creating Account...</span>
+                    </span>
                   } @else {
-                    <mat-icon>check_circle</mat-icon>
-                    <span>Create Account</span>
+                    <span class="button-inner">
+                      <mat-icon matButtonIcon>check_circle</mat-icon>
+                      <span>Create Account</span>
+                    </span>
                   }
                 </button>
               </div>

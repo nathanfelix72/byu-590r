@@ -6,7 +6,7 @@
         <div class="page__subtitle">
           Status: <strong>{{ session()!.status }}</strong>
           @if (session()!.host?.name) {
-            <span class="code"> · Created by: <strong>{{ session()!.host.name }}</strong></span>
+            <span class="code"> · Created by: <strong>{{ session()!.host?.name }}</strong></span>
           }
           @if (session()!.join_code) {
             <span class="code">Join code: {{ session()!.join_code }}</span>
