@@ -49,8 +49,7 @@ export class GameSessionsComponent implements OnInit {
   });
 
   joinForm = this.fb.group({
-    id: [null as number | null],
-    join_code: [''],
+    join_code: ['', [Validators.required, Validators.minLength(4)]],
   });
 
   ngOnInit(): void {
@@ -117,45 +116,24 @@ export class GameSessionsComponent implements OnInit {
     const value = this.joinForm.getRawValue();
 
     const joinCode = (value.join_code || '').trim();
-    const sessionId = value.id;
-
-    if (joinCode) {
-      this.gameSessionService.joinGameSessionByCode(joinCode).subscribe({
-        next: () => {
-          this.snackBar.open('Joined session', 'Close', { duration: 3000 });
-          this.joinOpen.set(false);
-          this.joinForm.reset();
-          this.loadMyGameSessions();
-        },
-        error: (err) => {
-          this.snackBar.open(err?.error?.message || 'Failed to join', 'Close', {
-            duration: 5000,
-          });
-        },
-      });
+    if (!joinCode) {
+      this.snackBar.open('Enter a join code.', 'Close', { duration: 5000 });
       return;
     }
 
-    if (!sessionId) {
-      this.snackBar.open('Enter a session id or a join code.', 'Close', { duration: 5000 });
-      return;
-    }
-
-    this.gameSessionService
-      .joinGameSession(sessionId, undefined)
-      .subscribe({
-        next: () => {
-          this.snackBar.open('Joined session', 'Close', { duration: 3000 });
-          this.joinOpen.set(false);
-          this.joinForm.reset();
-          this.loadMyGameSessions();
-        },
-        error: (err) => {
-          this.snackBar.open(err?.error?.message || 'Failed to join', 'Close', {
-            duration: 5000,
-          });
-        },
-      });
+    this.gameSessionService.joinGameSessionByCode(joinCode).subscribe({
+      next: () => {
+        this.snackBar.open('Joined session', 'Close', { duration: 3000 });
+        this.joinOpen.set(false);
+        this.joinForm.reset();
+        this.loadMyGameSessions();
+      },
+      error: (err) => {
+        this.snackBar.open(err?.error?.message || 'Failed to join', 'Close', {
+          duration: 5000,
+        });
+      },
+    });
   }
 }
 

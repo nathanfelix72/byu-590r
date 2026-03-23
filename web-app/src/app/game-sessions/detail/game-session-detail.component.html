@@ -5,6 +5,9 @@
         <div class="page__title">{{ session()!.name }}</div>
         <div class="page__subtitle">
           Status: <strong>{{ session()!.status }}</strong>
+          @if (session()!.host?.name) {
+            <span class="code"> · Created by: <strong>{{ session()!.host.name }}</strong></span>
+          }
           @if (session()!.join_code) {
             <span class="code">Join code: {{ session()!.join_code }}</span>
           }
@@ -69,15 +72,59 @@
               @if (p.user_id !== myUserId) {
                 <div class="opponent" [class.opponent--active]="p.user_id === currentTurnUserId">
                   <div class="opponent__name">{{ nameForUserId(p.user_id) }}</div>
-                  <div class="opponent__count">{{ p.handCount ?? '—' }} cards</div>
+                  <div class="opponent__hand">
+                    @if (typeof p.handCount === 'number') {
+                      <div class="opponentHand__rail">
+                        @for (_ of opponentHandBacks(p.handCount); track $index) {
+                          <app-uno-card
+                            [card]="{ color: 'w', value: 'wild' }"
+                            [faceDown]="true"
+                            size="sm"
+                          ></app-uno-card>
+                        }
+                      </div>
+                      @if (opponentHandRemainder(p.handCount) > 0) {
+                        <div class="opponent__count">
+                          +{{ opponentHandRemainder(p.handCount) }} more
+                        </div>
+                      }
+                    } @else {
+                      <div class="opponent__count">—</div>
+                    }
+                  </div>
                 </div>
               }
             }
           </div>
 
+          @if (wildPickerOpen()) {
+            <div class="wildPicker" (click)="$event.stopPropagation()">
+              <div class="wildPicker__title">Choose a color</div>
+              <div class="wildPicker__buttons">
+                <button class="wildColorBtn wildColorBtn--r" type="button" (click)="chooseWildColor('r')">
+                  Red
+                </button>
+                <button class="wildColorBtn wildColorBtn--g" type="button" (click)="chooseWildColor('g')">
+                  Green
+                </button>
+                <button class="wildColorBtn wildColorBtn--b" type="button" (click)="chooseWildColor('b')">
+                  Blue
+                </button>
+                <button class="wildColorBtn wildColorBtn--y" type="button" (click)="chooseWildColor('y')">
+                  Yellow
+                </button>
+              </div>
+            </div>
+          }
+
           <div class="center">
-          <div class="center__stack">
-            <app-uno-card [card]="(unoState.discard?.[unoState.discard.length - 1])" size="lg"></app-uno-card>
+            <div class="center__stack">
+              <div class="discardTarget" data-uno-discard>
+                <app-uno-card
+                  [card]="unoState.discard?.[unoState.discard.length - 1]"
+                  size="lg"
+                ></app-uno-card>
+              </div>
               <div class="deck">
                 <app-uno-card [card]="{color:'w', value:'wild'}" [faceDown]="true" size="lg"></app-uno-card>
               </div>
@@ -88,13 +135,25 @@
           <div class="myHand">
             <div class="myHand__rail" [class.myHand__rail--disabled]="!isMyTurn">
               @for (c of myHand(); track $index) {
-                <button class="fanCard" type="button" (click)="playCard($index)" [disabled]="!isMyTurn">
+                <button
+                  class="fanCard"
+                  type="button"
+                  [attr.data-hand-card-index]="$index"
+                  (click)="playCard($index)"
+                  [disabled]="!isMyTurn || wildPickerOpen()"
+                >
                   <app-uno-card [card]="c" size="md"></app-uno-card>
                 </button>
               }
             </div>
           </div>
         </div>
+      </div>
+    }
+
+    @if (session()!.status === 'finished' && unoState?.winnerUserId !== null && unoState?.winnerUserId !== undefined) {
+      <div class="winnerBanner">
+        {{ winnerName() }} wins!
       </div>
     }
   } @else {

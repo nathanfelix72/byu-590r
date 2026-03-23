@@ -8,6 +8,11 @@ export interface GameSession {
   id: number;
   game_id?: number | null;
   host_user_id?: number | null;
+  host?: {
+    id?: number;
+    name?: string;
+    avatar?: string | null;
+  } | null;
   name: string;
   description: string;
   game_session_cover_picture: string | null;

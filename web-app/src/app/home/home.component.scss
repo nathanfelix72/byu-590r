@@ -1,0 +1,38 @@
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+
+.stat {
+  min-width: 140px;
+}
+
+.stat__label {
+  opacity: 0.8;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.stat__value {
+  font-weight: 900;
+  font-size: 24px;
+}
+
+.muted {
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+
+.home__books {
+  display: none;
+}
+

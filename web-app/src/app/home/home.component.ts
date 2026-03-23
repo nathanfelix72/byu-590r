@@ -7,24 +7,21 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { GameSessionService, GameSession } from '../core/services/game-session.service';
+import { UserService } from '../core/services/user.service';
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, RouterModule, MatCardModule, MatButtonModule, MatListModule],
   templateUrl: './home.component.html',
-  styles: []
+  styleUrl: './home.component.scss'
 })
 export class HomeComponent {
   authStore = inject(AuthStore);
   userStore = inject(UserStore);
   private gameSessionService = inject(GameSessionService);
+  private userService = inject(UserService);
   router = inject(Router);
-
-  listOfBooks = [
-    'Harry Potter, J.K. Rowling',
-    'Mistborn, Brandon Sanderson'
-  ];
 
   sessions = signal<GameSession[]>([]);
   recentSessions = computed(() => this.sessions().slice(0, 3));
@@ -38,7 +35,17 @@ export class HomeComponent {
   });
 
   constructor() {
+    this.refreshUserProfile();
     this.loadRecentSessions();
+  }
+
+  private refreshUserProfile(): void {
+    this.userService.getUser().subscribe({
+      next: (res) => this.userStore.setUser(res.results),
+      error: () => {
+        // Non-fatal; dashboard can still show sessions even if profile fetch fails.
+      },
+    });
   }
 
   loadRecentSessions(): void {
