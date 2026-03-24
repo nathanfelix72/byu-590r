@@ -48,5 +48,10 @@ class GameSession extends Model
     {
         return $this->hasMany(UserGameSession::class, 'game_session_id');
     }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(GameSessionMessage::class, 'game_session_id');
+    }
 }
 

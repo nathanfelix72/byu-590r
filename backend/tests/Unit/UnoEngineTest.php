@@ -107,5 +107,18 @@ class UnoEngineTest extends TestCase
             'payload' => ['cardIndex' => 0],
         ]);
     }
+
+    public function test_is_playable_treats_string_zero_as_valid_value(): void
+    {
+        $engine = new UnoEngine();
+        $m = new \ReflectionMethod(UnoEngine::class, 'isPlayable');
+        $m->setAccessible(true);
+        $state = ['currentColor' => 'b', 'currentValue' => '3'];
+        // Same color: string "0" must count as a real card value (not treated as empty).
+        $this->assertTrue($m->invoke($engine, $state, ['color' => 'b', 'value' => '0']));
+        $this->assertFalse($m->invoke($engine, $state, ['color' => 'g', 'value' => '0']));
+        $stateZeroTop = ['currentColor' => 'b', 'currentValue' => '0'];
+        $this->assertTrue($m->invoke($engine, $stateZeroTop, ['color' => 'g', 'value' => '0']));
+    }
 }
 

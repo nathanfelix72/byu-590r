@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\GameSession;
+use App\Models\GameSessionMessage;
 use App\Models\UserGameSession;
+use App\Events\GameSessionChatMessage;
 use App\Events\GameSessionUpdated;
 use App\Events\UnoMoveApplied;
 use App\Services\UnoEngine;
@@ -46,7 +48,7 @@ class GameSessionController extends BaseController
             ->whereHas('players', function ($q) use ($userId) {
                 $q->where('user_id', $userId)->whereNull('left_at');
             })
-            ->with(['game', 'host', 'players'])
+            ->with(['game', 'host', 'players.user'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -58,6 +60,77 @@ class GameSessionController extends BaseController
 
         $presented = $sessions->map(fn ($s) => $this->presentSessionForUser($s, (int) $userId));
         return $this->sendResponse($presented, 'My Game Sessions');
+    }
+
+    public function chatIndex($id)
+    {
+        $userId = auth()->id();
+        $session = GameSession::find($id);
+        if (!$session) {
+            return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+        }
+        $isMember = $session->players()->where('user_id', $userId)->whereNull('left_at')->exists();
+        if (!$isMember) {
+            return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
+        }
+
+        $messages = GameSessionMessage::query()
+            ->where('game_session_id', (int) $id)
+            ->with(['user:id,name'])
+            ->orderBy('id', 'asc')
+            ->limit(300)
+            ->get()
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'body' => $m->body,
+                'user_id' => $m->user_id,
+                'user_name' => $m->user?->name ?? ('Player ' . $m->user_id),
+                'created_at' => $m->created_at?->toISOString(),
+            ]);
+
+        return $this->sendResponse($messages, 'Chat messages');
+    }
+
+    public function chatStore(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'body' => 'required|string|min:1|max:2000',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 422);
+        }
+
+        $userId = auth()->id();
+        $session = GameSession::find($id);
+        if (!$session) {
+            return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+        }
+        $isMember = $session->players()->where('user_id', $userId)->whereNull('left_at')->exists();
+        if (!$isMember) {
+            return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
+        }
+        if ($session->status === 'waiting') {
+            return $this->sendError('Conflict.', ['error' => 'Chat is available once the game has started'], 409);
+        }
+
+        $msg = GameSessionMessage::create([
+            'game_session_id' => (int) $id,
+            'user_id' => (int) $userId,
+            'body' => (string) $request->input('body'),
+        ]);
+        $msg->load('user:id,name');
+
+        $payload = [
+            'id' => $msg->id,
+            'body' => $msg->body,
+            'user_id' => $msg->user_id,
+            'user_name' => $msg->user?->name ?? ('Player ' . $msg->user_id),
+            'created_at' => $msg->created_at?->toISOString(),
+        ];
+
+        event(new GameSessionChatMessage((int) $id, $payload));
+
+        return $this->sendResponse($payload, 'Message sent');
     }
 
     public function store(Request $request)

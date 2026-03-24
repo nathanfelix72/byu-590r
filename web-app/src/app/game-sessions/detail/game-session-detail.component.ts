@@ -8,28 +8,40 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatListModule } from '@angular/material/list';
-import { GameSessionService, GameSession } from '../../core/services/game-session.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDialog } from '@angular/material/dialog';
+import {
+  GameSessionService,
+  GameSession,
+  GameSessionChatMessage,
+} from '../../core/services/game-session.service';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { UserStore } from '../../core/stores/user.store';
 import { UserService } from '../../core/services/user.service';
 import { UnoCardComponent } from '../../uno/uno-card/uno-card.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-game-session-detail',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RouterModule,
     MatCardModule,
     MatButtonModule,
     MatSnackBarModule,
     MatListModule,
+    MatFormFieldModule,
+    MatInputModule,
     UnoCardComponent,
   ],
   templateUrl: './game-session-detail.component.html',
@@ -37,13 +49,17 @@ import { UnoCardComponent } from '../../uno/uno-card/uno-card.component';
 })
 export class GameSessionDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private service = inject(GameSessionService);
   private snackBar = inject(MatSnackBar);
   private realtime = inject(RealtimeService);
   protected userStore = inject(UserStore);
   private userService = inject(UserService);
+  private dialog = inject(MatDialog);
 
   session = signal<GameSession | null>(null);
+  chatMessages = signal<GameSessionChatMessage[]>([]);
+  chatDraft = '';
   isLoading = signal(false);
   private lastWinnerSeen = signal<number | null>(null);
 
@@ -130,6 +146,13 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
       })
       .listen('.UnoMoveApplied', (payload: any) => {
         this.applyUnoMovePayload(payload);
+      })
+      .listen('.GameSessionChatMessage', (payload: any) => {
+        const updatedId = Number(payload?.gameSessionId);
+        if (!Number.isFinite(updatedId) || updatedId !== this.sessionId()) return;
+        const msg = payload?.message as GameSessionChatMessage | undefined;
+        if (!msg || typeof msg.id !== 'number') return;
+        this.upsertChatMessage(msg);
       });
   }
 
@@ -228,6 +251,12 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     this.service.getGameSession(this.sessionId()).subscribe({
       next: (res) => {
         this.session.set(res.results);
+        const st = res.results?.status;
+        if (st && st !== 'waiting') {
+          this.loadChat();
+        } else {
+          this.chatMessages.set([]);
+        }
         if (!silent) {
           this.isLoading.set(false);
         }
@@ -239,6 +268,45 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
         if (!silent) {
           this.isLoading.set(false);
         }
+      },
+    });
+  }
+
+  private loadChat(): void {
+    const id = this.sessionId();
+    if (!Number.isFinite(id) || id <= 0) return;
+    this.service.getChat(id).subscribe({
+      next: (res) => this.chatMessages.set(res.results || []),
+      error: () => {
+        // Non-fatal; table may not exist until migrate.
+      },
+    });
+  }
+
+  private upsertChatMessage(msg: GameSessionChatMessage): void {
+    const list = [...this.chatMessages()];
+    const i = list.findIndex((m) => m.id === msg.id);
+    if (i >= 0) list[i] = msg;
+    else list.push(msg);
+    list.sort((a, b) => a.id - b.id);
+    this.chatMessages.set(list);
+  }
+
+  sendChat(): void {
+    const id = this.sessionId();
+    const body = this.chatDraft.trim();
+    if (!Number.isFinite(id) || id <= 0 || !body) return;
+    this.service.postChat(id, body).subscribe({
+      next: (res) => {
+        this.chatDraft = '';
+        this.upsertChatMessage(res.results);
+      },
+      error: (err) => {
+        this.snackBar.open(
+          err?.error?.data?.error || err?.error?.message || 'Could not send message',
+          'Close',
+          { duration: 5000 }
+        );
       },
     });
   }
@@ -258,18 +326,6 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  currentColorLabel(): string {
-    const c = this.unoState?.currentColor;
-    const labels: Record<string, string> = {
-      r: 'Red',
-      g: 'Green',
-      b: 'Blue',
-      y: 'Yellow',
-      w: 'Wild',
-    };
-    return labels[String(c)] ?? (c != null && c !== '' ? String(c) : '—');
-  }
-
   get myUserId(): number | null {
     return this.userStore.user()?.id ?? null;
   }
@@ -285,16 +341,36 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     return state.players?.[state.currentTurn]?.user_id ?? null;
   }
 
-  get currentTurnName(): string {
-    const uid = this.currentTurnUserId;
-    if (!uid) return '—';
-    return this.nameForUserId(uid);
-  }
-
   get isMyTurn(): boolean {
     const uid = this.myUserId;
     const turnUid = this.currentTurnUserId;
     return !!uid && !!turnUid && uid === turnUid;
+  }
+
+  get isHost(): boolean {
+    const uid = this.myUserId;
+    const hid = this.session()?.host_user_id;
+    if (uid === null || hid === null || hid === undefined) return false;
+    return Number(uid) === Number(hid);
+  }
+
+  isCardPlayable(card: { color?: string; value?: string } | null | undefined): boolean {
+    if (!card || typeof card !== 'object') return false;
+    const state = this.unoState;
+    if (!state) return false;
+    const color = card.color;
+    const value = card.value;
+    if (color === undefined || color === null || color === '') return false;
+    if (value === undefined || value === null || value === '') return false;
+    if (color === 'w') return true;
+    if (state.currentColor === color) return true;
+    if (state.currentValue === value) return true;
+    return false;
+  }
+
+  hasAnyPlayable(): boolean {
+    if (!this.isMyTurn) return false;
+    return this.myHand().some((c) => this.isCardPlayable(c));
   }
 
   nameForUserId(userId: number): string {
@@ -315,6 +391,27 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
   playersList(): any[] {
     const s: any = this.session();
     return Array.isArray(s?.players) ? s.players : [];
+  }
+
+  activeLobbyPlayers(): any[] {
+    return this.playersList().filter((p: any) => !p.left_at);
+  }
+
+  cardCountLabelForUser(userId: number): string {
+    const st = this.unoState;
+    const status = this.session()?.status;
+    if (!st?.players || (status !== 'in_progress' && status !== 'finished')) {
+      return '—';
+    }
+    const row = st.players.find((p: any) => Number(p.user_id) === Number(userId));
+    if (row && typeof row.handCount === 'number') {
+      return row.handCount === 1 ? '1 card' : `${row.handCount} cards`;
+    }
+    if (Array.isArray(row?.hand)) {
+      const n = row.hand.length;
+      return n === 1 ? '1 card' : `${n} cards`;
+    }
+    return '—';
   }
 
   wildPickerOpen(): boolean {
@@ -350,6 +447,11 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
 
     const card = this.myHand()[cardIndex];
     if (!card) return;
+
+    if (card.color !== 'w' && !this.isCardPlayable(card)) {
+      this.snackBar.open('You can’t play that card right now.', 'Close', { duration: 3000 });
+      return;
+    }
 
     // For wild cards, let the user choose the next color.
     if (card.color === 'w') {
@@ -497,16 +599,31 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
   leave(): void {
     const s = this.session();
     if (!s) return;
-    this.service.leaveGameSession(s.id).subscribe({
-      next: () => {
-        this.snackBar.open('Left session', 'Close', { duration: 2500 });
-      },
-      error: (err) => {
-        this.snackBar.open(err?.error?.message || 'Failed to leave', 'Close', {
-          duration: 5000,
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Leave this game?',
+          message: 'You will leave the session and return to the list.',
+          confirmText: 'Leave',
+          confirmColor: 'warn',
+        },
+        width: '420px',
+      })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (!ok) return;
+        this.service.leaveGameSession(s.id).subscribe({
+          next: () => {
+            this.snackBar.open('Left session', 'Close', { duration: 2500 });
+            void this.router.navigate(['/game-sessions']);
+          },
+          error: (err) => {
+            this.snackBar.open(err?.error?.message || 'Failed to leave', 'Close', {
+              duration: 5000,
+            });
+          },
         });
-      },
-    });
+      });
   }
 }
 

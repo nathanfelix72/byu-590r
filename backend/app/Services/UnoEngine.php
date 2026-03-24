@@ -277,7 +277,13 @@ class UnoEngine
     {
         $color = $card['color'] ?? null;
         $value = $card['value'] ?? null;
-        if (!$color || !$value) return false;
+        // Do not use empty()/!$value: UNO card "0" is the string '0', which is falsy in PHP.
+        if ($color === null || $color === '' || !array_key_exists('value', $card)) {
+            return false;
+        }
+        if ($value === null || $value === '') {
+            return false;
+        }
         if ($color === 'w') return true;
         if (($state['currentColor'] ?? null) === $color) return true;
         if (($state['currentValue'] ?? null) === $value) return true;

@@ -4,10 +4,33 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 
+export interface GameSessionPlayerPivot {
+  id?: number;
+  user_id: number;
+  score?: number;
+  seat?: number | null;
+  is_ready?: boolean;
+  left_at?: string | null;
+  user?: {
+    id?: number;
+    name?: string;
+    avatar?: string | null;
+  } | null;
+}
+
+export interface GameSessionChatMessage {
+  id: number;
+  body: string;
+  user_id: number;
+  user_name: string;
+  created_at?: string | null;
+}
+
 export interface GameSession {
   id: number;
   game_id?: number | null;
   host_user_id?: number | null;
+  players?: GameSessionPlayerPivot[];
   host?: {
     id?: number;
     name?: string;
@@ -153,6 +176,31 @@ export class GameSessionService {
     return this.http.post<{ success: boolean; results: GameSession; message: string }>(
       `${this.apiUrl}game-sessions/${id}/moves`,
       move,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  getChat(
+    id: number
+  ): Observable<{ success: boolean; results: GameSessionChatMessage[]; message: string }> {
+    return this.http.get<{
+      success: boolean;
+      results: GameSessionChatMessage[];
+      message: string;
+    }>(`${this.apiUrl}game-sessions/${id}/chat`, { headers: this.getAuthHeaders() });
+  }
+
+  postChat(
+    id: number,
+    body: string
+  ): Observable<{ success: boolean; results: GameSessionChatMessage; message: string }> {
+    return this.http.post<{
+      success: boolean;
+      results: GameSessionChatMessage;
+      message: string;
+    }>(
+      `${this.apiUrl}game-sessions/${id}/chat`,
+      { body },
       { headers: this.getAuthHeaders() }
     );
   }

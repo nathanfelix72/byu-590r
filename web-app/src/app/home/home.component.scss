@@ -36,3 +36,94 @@
   display: none;
 }
 
+.gamesCard {
+  grid-column: 1 / -1;
+}
+
+.gamesToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gamesToolbar__search {
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+
+.gamesToolbar__sort {
+  flex: 0 1 200px;
+  min-width: 160px;
+}
+
+.gamesTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gamesTable__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.1fr) 100px minmax(160px, 1.4fr) 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.gamesTable__row--head {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.gamesTable__row--body {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease;
+}
+
+.gamesTable__row--body:hover {
+  background: rgba(25, 118, 210, 0.06);
+}
+
+.gamesTable__cell--players {
+  font-size: 13px;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusPill {
+  display: inline-flex;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 720px) {
+  .gamesTable__row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .gamesTable__row--head {
+    display: none;
+  }
+
+  .gamesTable__row--body {
+    padding: 12px 14px;
+  }
+}
+
