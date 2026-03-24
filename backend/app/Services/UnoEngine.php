@@ -152,11 +152,12 @@ class UnoEngine
         } elseif ($card['value'] === 'skip') {
             $skipNext = true;
         } elseif ($card['value'] === 'draw2') {
+            // Next player must draw (pendingDraw) and then loses their turn after drawing.
+            // Do NOT skip-turn here: skipNext would advance past the victim so they never
+            // become currentTurn with the pending penalty (breaks 2-player and multi-player).
             $state['pendingDraw'] = ((int) ($state['pendingDraw'] ?? 0)) + 2;
-            $skipNext = true;
         } elseif ($card['value'] === 'wild_draw4') {
             $state['pendingDraw'] = ((int) ($state['pendingDraw'] ?? 0)) + 4;
-            $skipNext = true;
         }
 
         $state['moveHistory'][] = [
@@ -244,10 +245,11 @@ class UnoEngine
         if ($value === 'reverse') {
             $state['direction'] = -1;
         } elseif ($value === 'skip') {
-            $state = $this->advanceTurn($state, true);
+            // First player (currentTurn) is skipped; next player in order takes the turn.
+            $state = $this->advanceTurn($state, false);
         } elseif ($value === 'draw2') {
+            // Opening Draw Two: first player must draw 2 before playing.
             $state['pendingDraw'] = 2;
-            $state = $this->advanceTurn($state, true);
         }
         return $state;
     }

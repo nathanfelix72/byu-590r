@@ -26,7 +26,7 @@
           @if (isMyTurn) { Your turn } @else { {{ currentTurnName }}’s turn }
         </div>
         <div class="turnBanner__sub">
-          Current color: <strong>{{ unoState.currentColor }}</strong>
+          Current color: <strong>{{ currentColorLabel() }}</strong>
           @if (unoState.pendingDraw > 0) { · Pending draw: {{ unoState.pendingDraw }} }
         </div>
       </div>
@@ -120,10 +120,13 @@
           <div class="center">
             <div class="center__stack">
               <div class="discardTarget" data-uno-discard>
-                <app-uno-card
-                  [card]="unoState.discard?.[unoState.discard.length - 1]"
-                  size="lg"
-                ></app-uno-card>
+                @if (topDiscardCard(); as top) {
+                  <app-uno-card
+                    [card]="top"
+                    [wildActiveColor]="discardWildTint()"
+                    size="lg"
+                  ></app-uno-card>
+                }
               </div>
               <div class="deck">
                 <app-uno-card [card]="{color:'w', value:'wild'}" [faceDown]="true" size="lg"></app-uno-card>

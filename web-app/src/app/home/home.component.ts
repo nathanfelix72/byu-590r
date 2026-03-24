@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { GameSessionService, GameSession } from '../core/services/game-session.service';
 import { UserService } from '../core/services/user.service';
+import { RealtimeService } from '../core/services/realtime.service';
 
 @Component({
   selector: 'app-home',
@@ -21,6 +22,7 @@ export class HomeComponent {
   userStore = inject(UserStore);
   private gameSessionService = inject(GameSessionService);
   private userService = inject(UserService);
+  private realtime = inject(RealtimeService);
   router = inject(Router);
 
   sessions = signal<GameSession[]>([]);
@@ -56,6 +58,7 @@ export class HomeComponent {
   }
 
   logout(): void {
+    this.realtime.disconnect();
     this.authStore.logout();
     this.router.navigate(['/login']);
   }

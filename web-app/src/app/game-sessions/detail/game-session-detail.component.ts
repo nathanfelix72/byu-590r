@@ -1,6 +1,15 @@
-import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  OnDestroy,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { map } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -42,84 +51,162 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
 
   private pendingWildCardIndex = signal<number | null>(null);
 
-  sessionId = computed(() => Number(this.route.snapshot.paramMap.get('id')));
+  /** Session id from route (updates if the routed component is reused for another session). */
+  readonly sessionId = signal(0);
+
+  /** Avoid duplicate Echo listeners for the same session. */
+  private realtimeBoundSessionId: number | null = null;
+
+  constructor() {
+    const initial = Number(this.route.snapshot.paramMap.get('id'));
+    if (Number.isFinite(initial)) {
+      this.sessionId.set(initial);
+    }
+
+    this.route.paramMap
+      .pipe(
+        map((pm) => Number(pm.get('id'))),
+        takeUntilDestroyed()
+      )
+      .subscribe((nextId) => {
+        if (!Number.isFinite(nextId) || nextId === this.sessionId()) return;
+        this.realtime.leave(`game-session.${this.sessionId()}`);
+        this.realtimeBoundSessionId = null;
+        this.sessionId.set(nextId);
+        this.refresh();
+        this.scheduleRealtimeAttach(0);
+      });
+  }
 
   ngOnInit(): void {
     this.refresh();
-    this.attachRealtime();
+    this.scheduleRealtimeAttach(0);
   }
 
   ngOnDestroy(): void {
     this.realtime.leave(`game-session.${this.sessionId()}`);
+    this.realtimeBoundSessionId = null;
   }
 
-  attachRealtime(): void {
-    const echo = this.realtime.connect();
-    if (!echo) return;
+  @HostListener('document:visibilitychange')
+  onDocumentVisibility(): void {
+    if (document.visibilityState === 'visible' && this.session()) {
+      this.refresh({ silent: true });
+    }
+  }
 
-    const channelName = `game-session.${this.sessionId()}`;
+  /** Retry Echo until token/socket is ready (fixes “must click Refresh” after cold load). */
+  private scheduleRealtimeAttach(attempt: number): void {
+    const maxAttempts = 15;
+    const id = this.sessionId();
+    if (!Number.isFinite(id) || id <= 0) return;
+
+    const echo = this.realtime.connect();
+    if (!echo) {
+      if (attempt < maxAttempts) {
+        window.setTimeout(() => this.scheduleRealtimeAttach(attempt + 1), 400);
+      }
+      return;
+    }
+
+    if (this.realtimeBoundSessionId === id) {
+      return;
+    }
+
+    if (this.realtimeBoundSessionId !== null) {
+      this.realtime.leave(`game-session.${this.realtimeBoundSessionId}`);
+    }
+
+    this.realtimeBoundSessionId = id;
+    const channelName = `game-session.${id}`;
+
     echo
       .private(channelName)
       .listen('.GameSessionUpdated', (payload: any) => {
         const updatedId = Number(payload?.gameSessionId);
         if (Number.isFinite(updatedId) && updatedId === this.sessionId()) {
-          this.refresh();
+          this.refresh({ silent: true });
         }
       })
       .listen('.UnoMoveApplied', (payload: any) => {
-        // No-refresh update path: apply public state + card counts.
-        const s: any = this.session();
-        if (!s) return;
-        const payloadSessionId = Number(payload?.gameSessionId);
-        const currentSessionId = Number(s.id);
-        if (!Number.isFinite(payloadSessionId) || payloadSessionId !== currentSessionId) return;
-
-        const nextVersion = Number(payload?.serverVersion);
-        const curVersion = Number(s.version ?? 0);
-        if (!Number.isFinite(nextVersion) || nextVersion <= curVersion) return;
-
-        const state: any = s.state;
-        if (!state || state.type !== 'uno') return;
-
-        const publicState = payload?.publicState;
-        const handCounts = payload?.handCountsByUserId || {};
-        const isFinished = publicState?.winnerUserId !== null && publicState?.winnerUserId !== undefined;
-
-        // Update public fields
-        state.currentTurn = publicState?.currentTurn ?? state.currentTurn;
-        state.currentColor = publicState?.currentColor ?? state.currentColor;
-        state.currentValue = publicState?.currentValue ?? state.currentValue;
-        state.direction = publicState?.direction ?? state.direction;
-        state.pendingDraw = publicState?.pendingDraw ?? state.pendingDraw;
-        state.winnerUserId = publicState?.winnerUserId ?? state.winnerUserId;
-        // UI only needs the top discard card for rendering.
-        state.discard = publicState?.topCard ? [publicState.topCard] : [];
-
-        // Update per-player counts (don’t touch my hand)
-        if (Array.isArray(state.players)) {
-          state.players = state.players.map((p: any) => {
-            const uid = Number(p.user_id);
-            const hc = handCounts?.[uid];
-            if (typeof hc === 'number') return { ...p, handCount: hc };
-            return p;
-          });
-        }
-
-        this.session.set({
-          ...(s as any),
-          status: isFinished ? 'finished' : s.status,
-          version: nextVersion,
-          state,
-        });
-
-        if (isFinished) {
-          const winnerId = Number(publicState?.winnerUserId);
-          if (Number.isFinite(winnerId) && this.lastWinnerSeen() !== winnerId) {
-            this.lastWinnerSeen.set(winnerId);
-            this.refreshUserProfile();
-          }
-        }
+        this.applyUnoMovePayload(payload);
       });
+  }
+
+  private handCountForUser(handCounts: Record<string, unknown>, uid: number): number | undefined {
+    if (!handCounts || typeof handCounts !== 'object') return undefined;
+    const raw = handCounts[uid] ?? handCounts[String(uid)];
+    return typeof raw === 'number' ? raw : undefined;
+  }
+
+  private applyUnoMovePayload(payload: any): void {
+    const s: any = this.session();
+    if (!s) return;
+    const payloadSessionId = Number(payload?.gameSessionId);
+    const currentSessionId = Number(s.id);
+    if (!Number.isFinite(payloadSessionId) || payloadSessionId !== currentSessionId) return;
+
+    const nextVersion = Number(payload?.serverVersion);
+    const curVersion = Number(s.version ?? 0);
+    if (!Number.isFinite(nextVersion) || nextVersion <= curVersion) return;
+
+    // Missed events: safer to full-sync than apply a partial delta.
+    if (nextVersion > curVersion + 1) {
+      this.refresh({ silent: true });
+      return;
+    }
+
+    const state: any = s.state;
+    if (!state || state.type !== 'uno') return;
+
+    const publicState = payload?.publicState;
+    const handCounts = (payload?.handCountsByUserId || {}) as Record<string, unknown>;
+    const isFinished =
+      publicState?.winnerUserId !== null && publicState?.winnerUserId !== undefined;
+
+    const actorId = Number(payload?.lastMove?.user_id);
+    const myId = this.myUserId;
+
+    state.currentTurn = publicState?.currentTurn ?? state.currentTurn;
+    state.currentColor = publicState?.currentColor ?? state.currentColor;
+    state.currentValue = publicState?.currentValue ?? state.currentValue;
+    state.direction = publicState?.direction ?? state.direction;
+    state.pendingDraw = publicState?.pendingDraw ?? state.pendingDraw;
+    state.winnerUserId = publicState?.winnerUserId ?? state.winnerUserId;
+
+    if (publicState?.topCard) {
+      state.discard = [publicState.topCard];
+    }
+
+    if (Array.isArray(state.players)) {
+      state.players = state.players.map((p: any) => {
+        const uid = Number(p.user_id);
+        const hc = this.handCountForUser(handCounts, uid);
+        if (typeof hc === 'number') return { ...p, handCount: hc };
+        return p;
+      });
+    }
+
+    this.session.set({
+      ...(s as any),
+      status: isFinished ? 'finished' : s.status,
+      version: nextVersion,
+      state,
+    });
+
+    if (isFinished) {
+      const winnerId = Number(publicState?.winnerUserId);
+      if (Number.isFinite(winnerId) && this.lastWinnerSeen() !== winnerId) {
+        this.lastWinnerSeen.set(winnerId);
+        this.refreshUserProfile();
+      }
+    }
+
+    // Reconcile with server after other players’ moves (or unknown actor). Skip when this
+    // client was the actor — the HTTP move response already refreshed state.
+    if (!Number.isFinite(actorId) || myId === null || actorId !== Number(myId)) {
+      queueMicrotask(() => this.refresh({ silent: true }));
+    }
   }
 
   private refreshUserProfile(): void {
@@ -133,20 +220,54 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  refresh(): void {
-    this.isLoading.set(true);
+  refresh(options?: { silent?: boolean }): void {
+    const silent = options?.silent === true;
+    if (!silent) {
+      this.isLoading.set(true);
+    }
     this.service.getGameSession(this.sessionId()).subscribe({
       next: (res) => {
         this.session.set(res.results);
-        this.isLoading.set(false);
+        if (!silent) {
+          this.isLoading.set(false);
+        }
       },
       error: (err) => {
         this.snackBar.open(err?.error?.message || 'Failed to load session', 'Close', {
           duration: 5000,
         });
-        this.isLoading.set(false);
+        if (!silent) {
+          this.isLoading.set(false);
+        }
       },
     });
+  }
+
+  topDiscardCard(): any {
+    const d = this.unoState?.discard;
+    if (!Array.isArray(d) || d.length === 0) return null;
+    return d[d.length - 1];
+  }
+
+  /** Tint wild / +4 on the discard pile to match `currentColor` after a color choice. */
+  discardWildTint(): 'r' | 'g' | 'b' | 'y' | null {
+    const top = this.topDiscardCard();
+    if (!top || top.color !== 'w') return null;
+    const c = this.unoState?.currentColor;
+    if (c === 'r' || c === 'g' || c === 'b' || c === 'y') return c;
+    return null;
+  }
+
+  currentColorLabel(): string {
+    const c = this.unoState?.currentColor;
+    const labels: Record<string, string> = {
+      r: 'Red',
+      g: 'Green',
+      b: 'Blue',
+      y: 'Yellow',
+      w: 'Wild',
+    };
+    return labels[String(c)] ?? (c != null && c !== '' ? String(c) : '—');
   }
 
   get myUserId(): number | null {

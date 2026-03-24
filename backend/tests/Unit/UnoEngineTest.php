@@ -58,5 +58,54 @@ class UnoEngineTest extends TestCase
             'payload' => ['cardIndex' => 1, 'chosenColor' => 'g'],
         ]);
     }
+
+    public function test_draw2_advances_to_victim_with_pending_draw_not_past_them(): void
+    {
+        $engine = new UnoEngine();
+
+        $rules = $engine->initState([10, 20])['rules'];
+
+        $state = [
+            'type' => 'uno',
+            'rules' => $rules,
+            'players' => [
+                [
+                    'user_id' => 10,
+                    'hand' => [
+                        ['color' => 'r', 'value' => 'draw2'],
+                        ['color' => 'y', 'value' => '7'],
+                    ],
+                ],
+                [
+                    'user_id' => 20,
+                    'hand' => [['color' => 'g', 'value' => '3']],
+                ],
+            ],
+            'deck' => array_fill(0, 10, ['color' => 'y', 'value' => '1']),
+            'discard' => [['color' => 'r', 'value' => '5']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '5',
+            'pendingDraw' => 0,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $next = $engine->applyMove($state, 10, [
+            'type' => 'play_card',
+            'payload' => ['cardIndex' => 0],
+        ]);
+
+        $this->assertSame(1, (int) $next['currentTurn']);
+        $this->assertSame(20, (int) $next['players'][1]['user_id']);
+        $this->assertSame(2, (int) $next['pendingDraw']);
+
+        $this->expectExceptionMessage('You must draw the pending cards.');
+        $engine->applyMove($next, 20, [
+            'type' => 'play_card',
+            'payload' => ['cardIndex' => 0],
+        ]);
+    }
 }
 

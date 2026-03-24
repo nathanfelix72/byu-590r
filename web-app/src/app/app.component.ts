@@ -14,6 +14,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { RealtimeService } from './core/services/realtime.service';
 
 @Component({
   selector: 'app-root',
@@ -42,6 +43,7 @@ export class AppComponent implements OnInit {
   private userService = inject(UserService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
+  private realtime = inject(RealtimeService);
 
   theme = signal<'light' | 'dark'>('dark');
   profileDialog = signal(false);
@@ -98,6 +100,7 @@ export class AppComponent implements OnInit {
 
   logout(): void {
     this.hasLoadedUser.set(false);
+    this.realtime.disconnect();
     this.authStore.logout();
     this.router.navigate(['/login']);
   }

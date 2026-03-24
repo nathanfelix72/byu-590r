@@ -3,6 +3,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { AuthStore } from '../stores/auth.store';
 
 declare global {
   interface Window {
@@ -13,13 +14,25 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class RealtimeService {
   private authService = inject(AuthService);
+  private authStore = inject(AuthStore);
   private echo: any = null;
 
-  connect(): any | null {
-    if (this.echo) return this.echo;
+  /**
+   * Bearer token from in-memory store or localStorage (covers timing/race with bootstrap).
+   */
+  private getAuthToken(): string | null {
+    return this.authStore.user()?.token ?? this.authService.getStoredUser()?.token ?? null;
+  }
 
-    const user = this.authService.getStoredUser();
-    if (!user?.token) return null;
+  connect(): any | null {
+    const token = this.getAuthToken();
+    if (!token) {
+      return null;
+    }
+
+    if (this.echo) {
+      return this.echo;
+    }
 
     window.Pusher = Pusher;
 
@@ -35,7 +48,7 @@ export class RealtimeService {
       authEndpoint: `${this.getBackendBaseUrl()}broadcasting/auth`,
       auth: {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${token}`,
         },
       },
     });
@@ -43,17 +56,31 @@ export class RealtimeService {
     return this.echo;
   }
 
+  /** Tear down Echo (e.g. logout) so the next connect() creates a new client with a fresh token. */
+  disconnect(): void {
+    try {
+      if (this.echo?.disconnect) {
+        this.echo.disconnect();
+      }
+    } catch {
+      /* ignore */
+    }
+    this.echo = null;
+  }
+
   leave(channelName: string): void {
     if (!this.echo) return;
-    this.echo.leave(channelName);
+    try {
+      this.echo.leave(channelName);
+    } catch {
+      /* ignore */
+    }
   }
 
   private getBackendBaseUrl(): string {
-    // environment.apiUrl is either "/api/" (dev proxy) or "http://host:4444/api/" (prod)
     const apiUrl = environment.apiUrl;
     if (apiUrl.endsWith('/api/')) return apiUrl.slice(0, -4);
     if (apiUrl.endsWith('/api')) return apiUrl.slice(0, -3);
     return apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
   }
 }
-

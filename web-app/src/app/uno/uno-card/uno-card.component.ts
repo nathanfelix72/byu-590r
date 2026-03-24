@@ -19,9 +19,21 @@ export class UnoCardComponent {
   @Input({ required: true }) card!: UnoCard;
   @Input() size: 'sm' | 'md' | 'lg' = 'md';
   @Input() faceDown = false;
+  /** When discard shows wild / wild_draw4, paint the face with the active game color. */
+  @Input() wildActiveColor: 'r' | 'g' | 'b' | 'y' | null = null;
 
   get colorName(): string {
     const c = this.card?.color;
+    if (c === 'w' && this.wildActiveColor) {
+      const w = this.wildActiveColor;
+      return w === 'r'
+        ? 'red'
+        : w === 'g'
+          ? 'green'
+          : w === 'b'
+            ? 'blue'
+            : 'yellow';
+    }
     return c === 'r'
       ? 'red'
       : c === 'g'
