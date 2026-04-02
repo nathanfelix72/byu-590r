@@ -11,6 +11,11 @@ class AuthenticateApi
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Let CORS preflight requests through without auth checks.
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         $token = $request->bearerToken();
 
         if (!$token) {

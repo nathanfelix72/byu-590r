@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ['middleware' => [\App\Http\Middleware\CorsMiddleware::class, \App\Http\Middleware\AuthenticateApi::class]]
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Apply CORS globally so non-API routes like /broadcasting/auth also include headers.
+        $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
+
         $middleware->api(prepend: [
             \App\Http\Middleware\CorsMiddleware::class,
         ]);
