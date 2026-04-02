@@ -200,6 +200,10 @@ jobs:
             # FRONTEND_URL used in ForgotPassword links; default to http://EC2_HOST if not provided.
             ([ -z '${{ secrets.FRONTEND_URL }}' ] || (grep -q '^FRONTEND_URL=' .env && sed -i 's|^FRONTEND_URL=.*|FRONTEND_URL=${{ secrets.FRONTEND_URL }}|' .env || echo 'FRONTEND_URL=${{ secrets.FRONTEND_URL }}' >> .env)); \
             ([ -z '${{ secrets.APP_DEBUG }}' ] || (grep -q '^APP_DEBUG=' .env && sed -i 's/^APP_DEBUG=.*/APP_DEBUG=${{ secrets.APP_DEBUG }}/' .env || echo 'APP_DEBUG=${{ secrets.APP_DEBUG }}' >> .env)); \
+            # Image generation config (application reads IMAGE_GENERATION_API_KEY)
+            ([ -z '${{ secrets.IMAGE_GENERATION_PROVIDER }}' ] || (grep -q '^IMAGE_GENERATION_PROVIDER=' .env && sed -i 's|^IMAGE_GENERATION_PROVIDER=.*|IMAGE_GENERATION_PROVIDER=${{ secrets.IMAGE_GENERATION_PROVIDER }}|' .env || echo 'IMAGE_GENERATION_PROVIDER=${{ secrets.IMAGE_GENERATION_PROVIDER }}' >> .env)); \
+            ([ -z '${{ secrets.IMAGE_GENERATION_API_KEY }}' ] || (grep -q '^IMAGE_GENERATION_API_KEY=' .env && sed -i 's|^IMAGE_GENERATION_API_KEY=.*|IMAGE_GENERATION_API_KEY=${{ secrets.IMAGE_GENERATION_API_KEY }}|' .env || echo 'IMAGE_GENERATION_API_KEY=${{ secrets.IMAGE_GENERATION_API_KEY }}' >> .env)); \
+            ([ -n '${{ secrets.IMAGE_GENERATION_API_KEY }}' ] || [ -z '${{ secrets.OPENAI_API_KEY }}' ] || (grep -q '^IMAGE_GENERATION_API_KEY=' .env && sed -i 's|^IMAGE_GENERATION_API_KEY=.*|IMAGE_GENERATION_API_KEY=${{ secrets.OPENAI_API_KEY }}|' .env || echo 'IMAGE_GENERATION_API_KEY=${{ secrets.OPENAI_API_KEY }}' >> .env)); \
             ([ -z '${{ secrets.OPENAI_API_KEY }}' ] || (grep -q '^OPENAI_API_KEY=' .env && sed -i 's|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}|' .env || echo 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}' >> .env)); \
             true"
 
