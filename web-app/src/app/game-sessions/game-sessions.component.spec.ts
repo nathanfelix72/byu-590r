@@ -146,7 +146,7 @@ describe('GameSessionsComponent', () => {
       'https://example.com/cover1.jpg'
     );
     expect(images[1].getAttribute('src')).toBe(
-      'assets/images/default-game-session.png'
+      component.defaultCoverImage
     );
   });
 }
