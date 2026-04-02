@@ -47,9 +47,13 @@
               color="primary"
               type="button"
               (click)="submitCreate()"
-              [disabled]="!createForm.valid"
+              [disabled]="!createForm.valid || isGeneratingImage()"
             >
-              Create
+              @if (isGeneratingImage()) {
+                <span>Generating AI Cover...</span>
+              } @else {
+                <span>Create</span>
+              }
             </button>
           </div>
         </form>
@@ -88,35 +92,45 @@
 
   <div class="card-grid">
     @for (session of gameSessions(); track session.id) {
-      <a class="sessionCard" [routerLink]="['/game-sessions', session.id]">
-        <mat-card>
-          <mat-card-content class="sessionCard__content">
-            <div class="sessionCard__meta">
-              <div class="sessionCard__title">{{ session.name }}</div>
-              <div class="sessionCard__desc">{{ session.description }}</div>
-                <div class="sessionCard__createdBy">
-                  Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
+      <div class="sessionCard">
+        <a [routerLink]="['/game-sessions', session.id]" class="sessionCard__link">
+          <mat-card>
+            <mat-card-content class="sessionCard__content">
+              <div class="sessionCard__meta">
+                <div class="sessionCard__title">{{ session.name }}</div>
+                <div class="sessionCard__desc">{{ session.description }}</div>
+                  <div class="sessionCard__createdBy">
+                    Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
+                  </div>
+                <div class="sessionCard__chips">
+                  <span class="chip chip--status">{{ session.status }}</span>
+                  @if (session.join_code) {
+                    <span class="chip">Code: {{ session.join_code }}</span>
+                  }
                 </div>
-              <div class="sessionCard__chips">
-                <span class="chip chip--status">{{ session.status }}</span>
-                @if (session.join_code) {
-                  <span class="chip">Code: {{ session.join_code }}</span>
-                }
               </div>
-            </div>
-            <div class="sessionCard__cover">
-              <img
-                [src]="
-                  session.game_session_cover_picture
-                    ? session.game_session_cover_picture
-                    : 'assets/images/default-game-session.png'
-                "
-                alt="Cover"
-              />
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </a>
+              <div class="sessionCard__cover">
+                <img
+                  [src]="
+                    session.game_session_cover_picture
+                      ? session.game_session_cover_picture
+                      : defaultCoverImage
+                  "
+                  alt="Cover"
+                />
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </a>
+        <button 
+          mat-icon-button 
+          class="sessionCard__delete"
+          (click)="deleteSession(session.id, session.name)"
+          matTooltip="Delete session"
+        >
+          ✕
+        </button>
+      </div>
     }
   </div>
 </section>

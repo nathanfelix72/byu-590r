@@ -39,6 +39,7 @@ export interface GameSession {
   name: string;
   description: string;
   game_session_cover_picture: string | null;
+  game_session_background_picture?: string | null;
   status: string;
   current_turn: number | null;
   join_code?: string | null;
@@ -144,6 +145,15 @@ export class GameSessionService {
     );
   }
 
+  deleteGameSession(
+    id: number
+  ): Observable<{ success: boolean; results: any; message: string }> {
+    return this.http.delete<{ success: boolean; results: any; message: string }>(
+      `${this.apiUrl}game-sessions/${id}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
   setReady(
     id: number,
     is_ready: boolean
@@ -201,6 +211,17 @@ export class GameSessionService {
     }>(
       `${this.apiUrl}game-sessions/${id}/chat`,
       { body },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  updateGameSessionBackground(
+    id: number,
+    backgroundUrl: string
+  ): Observable<{ success: boolean; results: GameSession; message: string }> {
+    return this.http.patch<{ success: boolean; results: GameSession; message: string }>(
+      `${this.apiUrl}game-sessions/${id}`,
+      { game_session_background_picture: backgroundUrl },
       { headers: this.getAuthHeaders() }
     );
   }

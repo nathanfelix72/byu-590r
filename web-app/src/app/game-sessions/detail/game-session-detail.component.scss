@@ -80,9 +80,12 @@
 }
 
 .hand__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0;
+  padding: 10px 0;
+  min-height: 160px;
 }
 
 .handCard {
@@ -95,12 +98,28 @@
   display: grid;
   gap: 6px;
   text-align: left;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.handCard:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+  transition: transform 120ms ease, box-shadow 120ms ease, margin 120ms ease;
+  flex-shrink: 0;
+  width: 100px;
+  margin-right: -50px;
+  
+  /* Each card gets progressively higher z-index */
+  @for $i from 0 through 50 {
+    &:nth-child(#{$i + 1}) {
+      z-index: $i;
+    }
+  }
+  
+  &:last-child {
+    margin-right: 0;
+  }
+  
+  &:hover {
+    transform: translateY(-40px) !important;
+    z-index: 200 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+    margin-right: -50px;
+  }
 }
 
 .handCard__c {
@@ -185,10 +204,19 @@
     radial-gradient(120% 150% at 70% 15%, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 40%),
     radial-gradient(120% 160% at 50% 85%, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0) 52%),
     linear-gradient(180deg, #0f3c2c 0%, #0a2a1f 100%);
+  background-size: cover;
+  background-position: center;
+  background-attachment: scroll;
+  background-repeat: no-repeat;
   box-shadow:
     0 30px 90px rgba(0, 0, 0, 0.30),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   overflow: hidden;
+}
+
+.unoTable__felt--with-image {
+  background-blend-mode: overlay;
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .unoTable__felt::after {
@@ -355,8 +383,10 @@
 }
 
 .drawBtn {
+  background: rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.92);
   border-color: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(10px);
 }
 
 .drawBtn--emphasis {

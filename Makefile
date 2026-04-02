@@ -33,6 +33,8 @@ start:
 	@$(MAKE) migrate
 	@echo "Setting up demo book images for local storage..."
 	cd backend && docker compose exec -T app php artisan app:setup-demo-images
+	@echo "Ensuring generated image storage path is writable..."
+	cd backend && docker compose exec -T app sh -lc 'mkdir -p /var/www/storage/app/public/generated-images && chmod 0777 /var/www/storage/app/public/generated-images'
 	@echo "Clearing all caches after migrations..."
 	cd backend && docker compose exec -T app php artisan optimize:clear || true
 	@echo "Detecting environment..."

@@ -19,12 +19,6 @@
   gap: 12px;
 }
 
-.sessionCard {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
 .sessionCard__content {
   display: grid;
   grid-template-columns: 1fr 140px;
@@ -74,5 +68,60 @@
   height: 92px;
   object-fit: cover;
   border-radius: 12px;
+}
+
+.sessionCard {
+  position: relative;
+}
+
+.sessionCard__link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.sessionCard__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(211, 47, 47, 0.9) !important;
+  color: white !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  border-radius: 50% !important;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 10;
+}
+
+.sessionCard:hover .sessionCard__delete {
+  opacity: 1;
+}
+
+/* Card grid with normal grid layout */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding-top: 12px;
+}
+
+/* Game session cards - normal layout */
+.sessionCard {
+  transition: all 200ms ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  }
+}
+
+/* Make mat-card opaque */
+mat-card {
+  background: white !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 

@@ -5,6 +5,7 @@ export const environment = {
   ws: {
     broadcaster: 'reverb',
     key: 'local',
+    cluster: 'mt1',
     wsHost: '__EC2_HOST__',
     wsPort: 4444,
     wssPort: 4444,

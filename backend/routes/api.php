@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\HelloWorldController;
 use App\Http\Controllers\Api\GameSessionController;
+use App\Http\Controllers\Api\ImageGenerationController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -52,12 +53,20 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
         Route::post('game-sessions/join', 'joinByCode');
         Route::post('game-sessions', 'store');
         Route::get('game-sessions/{id}', 'show');
+        Route::patch('game-sessions/{id}', 'update');
         Route::post('game-sessions/{id}/join', 'join');
         Route::post('game-sessions/{id}/leave', 'leave');
+        Route::delete('game-sessions/{id}', 'destroy');
         Route::post('game-sessions/{id}/ready', 'ready');
         Route::post('game-sessions/{id}/start', 'start');
         Route::post('game-sessions/{id}/moves', 'move');
         Route::get('game-sessions/{id}/chat', 'chatIndex');
         Route::post('game-sessions/{id}/chat', 'chatStore');
+    });
+
+    // Image generation routes
+    Route::controller(ImageGenerationController::class)->group(function () {
+        Route::post('generate-image/session-cover', 'generateSessionCover');
+        Route::post('generate-image/uno-background', 'generateUnoBoardBackground');
     });
 });

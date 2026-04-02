@@ -61,6 +61,7 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
   chatMessages = signal<GameSessionChatMessage[]>([]);
   chatDraft = '';
   isLoading = signal(false);
+  unoBackgroundImage = signal<string | null>(null);
   private lastWinnerSeen = signal<number | null>(null);
 
   private opponentBacksCap = 20;
@@ -251,6 +252,8 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     this.service.getGameSession(this.sessionId()).subscribe({
       next: (res) => {
         this.session.set(res.results);
+        this.unoBackgroundImage.set(res.results?.game_session_background_picture ?? null);
+        
         const st = res.results?.status;
         if (st && st !== 'waiting') {
           this.loadChat();

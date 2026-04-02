@@ -39,6 +39,7 @@ export class RealtimeService {
     this.echo = new (Echo as any)({
       broadcaster: 'pusher',
       key: environment.ws.key,
+      cluster: environment.ws.cluster,
       wsHost: environment.ws.wsHost,
       wsPort: environment.ws.wsPort,
       wssPort: environment.ws.wssPort,

@@ -19,6 +19,7 @@ class GameSession extends Model
         'name',
         'description',
         'game_session_cover_picture',
+        'game_session_background_picture',
         'status',
         'current_turn',
         'join_code',

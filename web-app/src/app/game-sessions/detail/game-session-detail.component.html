@@ -88,7 +88,11 @@
         class="unoTable"
         [class.unoTable--my-turn]="isMyTurn"
       >
-        <div class="unoTable__felt">
+        <div 
+          class="unoTable__felt"
+          [style.background-image]="unoBackgroundImage() ? 'url(' + unoBackgroundImage() + ')' : 'none'"
+          [class.unoTable__felt--with-image]="!!unoBackgroundImage()"
+        >
           <div class="opponents">
             @for (p of (unoState.players || []); track p.user_id) {
               @if (p.user_id !== myUserId) {

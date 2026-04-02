@@ -8,6 +8,7 @@ use App\Models\UserGameSession;
 use App\Events\GameSessionChatMessage;
 use App\Events\GameSessionUpdated;
 use App\Events\UnoMoveApplied;
+use App\Services\ImageGenerationService;
 use App\Services\UnoEngine;
 use App\Models\Profile;
 use Illuminate\Http\Request;
@@ -29,9 +30,8 @@ class GameSessionController extends BaseController
         $sessions = GameSession::orderBy('name', 'asc')->get();
 
         foreach ($sessions as $session) {
-            if ($session->game_session_cover_picture) {
-                $session->game_session_cover_picture = $this->getS3Url($session->game_session_cover_picture);
-            }
+            $session->game_session_cover_picture = $this->resolveStoredImagePath($session->game_session_cover_picture);
+            $session->game_session_background_picture = $this->resolveStoredImagePath($session->game_session_background_picture);
         }
 
         return $this->sendResponse($sessions, 'Game Sessions');
@@ -52,11 +52,11 @@ class GameSessionController extends BaseController
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        foreach ($sessions as $session) {
-            if ($session->game_session_cover_picture) {
-                $session->game_session_cover_picture = $this->getS3Url($session->game_session_cover_picture);
-            }
-        }
+        \Log::info('Fetched sessions for user', [
+            'user_id' => $userId,
+            'session_count' => count($sessions),
+            'first_session_cover_picture' => $sessions->first()?->game_session_cover_picture ?? 'N/A',
+        ]);
 
         $presented = $sessions->map(fn ($s) => $this->presentSessionForUser($s, (int) $userId));
         return $this->sendResponse($presented, 'My Game Sessions');
@@ -147,33 +147,51 @@ class GameSessionController extends BaseController
 
         /** @var int $userId */
         $userId = auth()->id();
+        $imageGenerationService = app(ImageGenerationService::class);
 
-        return DB::transaction(function () use ($request, $userId) {
-            $session = GameSession::create([
-                'game_id' => (int) $request->input('game_id'),
-                'host_user_id' => $userId,
-                'name' => $request->input('name'),
-                'description' => $request->input('description') ?? '',
-                'status' => 'waiting',
-                'current_turn' => null,
-                'join_code' => $this->generateJoinCode(),
-                'state' => null,
-                'version' => 0,
+        try {
+            return DB::transaction(function () use ($request, $userId, $imageGenerationService) {
+                $session = GameSession::create([
+                    'game_id' => (int) $request->input('game_id'),
+                    'host_user_id' => $userId,
+                    'name' => $request->input('name'),
+                    'description' => $request->input('description') ?? '',
+                    'game_session_cover_picture' => null,
+                    'game_session_background_picture' => null,
+                    'status' => 'waiting',
+                    'current_turn' => null,
+                    'join_code' => $this->generateJoinCode(),
+                    'state' => null,
+                    'version' => 0,
+                ]);
+
+                $prompt = $this->buildImagePrompt((string) $session->name, (string) $session->description);
+                $coverPath = $imageGenerationService->generateAndStoreImage($prompt, 'game_cover', (int) $session->id);
+                $backgroundPath = $imageGenerationService->generateAndStoreImage($prompt, 'uno_background', (int) $session->id);
+
+                $session->game_session_cover_picture = $coverPath;
+                $session->game_session_background_picture = $backgroundPath;
+                $session->save();
+
+                UserGameSession::create([
+                    'user_id' => $userId,
+                    'game_session_id' => $session->id,
+                    'seat' => 0,
+                    'score' => 0,
+                    'is_ready' => true,
+                    'is_ai' => false,
+                ]);
+
+                $session->load(['game', 'host', 'players']);
+                event(new GameSessionUpdated($session->id));
+                return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game Session created');
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create game session with generated images', [
+                'error' => $e->getMessage(),
             ]);
-
-            UserGameSession::create([
-                'user_id' => $userId,
-                'game_session_id' => $session->id,
-                'seat' => 0,
-                'score' => 0,
-                'is_ready' => true,
-                'is_ai' => false,
-            ]);
-
-            $session->load(['game', 'host', 'players']);
-            event(new GameSessionUpdated($session->id));
-            return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game Session created');
-        });
+            return $this->sendError('Failed to create game session', ['error' => 'Image generation failed. Please try again.'], 500);
+        }
     }
 
     public function show($id)
@@ -190,11 +208,38 @@ class GameSessionController extends BaseController
             return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
         }
 
-        if ($session->game_session_cover_picture) {
-            $session->game_session_cover_picture = $this->getS3Url($session->game_session_cover_picture);
+        return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game Session');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $session = GameSession::find($id);
+        if (!$session) {
+            return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
         }
 
-        return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game Session');
+        // Only allow host to update
+        $userId = auth()->id();
+        if ($session->host_user_id !== $userId) {
+            return $this->sendError('Forbidden.', ['error' => 'Only the host can update this session'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'game_session_background_picture' => 'nullable|string|url',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 422);
+        }
+
+        if ($request->has('game_session_background_picture')) {
+            $session->game_session_background_picture = $request->input('game_session_background_picture');
+        }
+
+        $session->save();
+
+        $session->load(['game', 'host', 'players.user']);
+        return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game session updated');
     }
 
     public function join(Request $request, $id)
@@ -312,6 +357,26 @@ class GameSessionController extends BaseController
         $pivot->update(['left_at' => now(), 'is_ready' => false]);
         event(new GameSessionUpdated((int) $id));
         return $this->sendResponse(['left' => true], 'Left game session');
+    }
+
+    public function destroy($id)
+    {
+        /** @var int $userId */
+        $userId = auth()->id();
+
+        $session = GameSession::find($id);
+        if (!$session) {
+            return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+        }
+
+        // Only the host can delete the session
+        if ($session->host_user_id !== $userId) {
+            return $this->sendError('Forbidden.', ['error' => 'Only the host can delete this session'], 403);
+        }
+
+        $session->delete();
+        event(new GameSessionUpdated((int) $id));
+        return $this->sendResponse(['deleted' => true], 'Game session deleted successfully');
     }
 
     public function ready(Request $request, $id)
@@ -503,6 +568,9 @@ class GameSessionController extends BaseController
 
     private function presentSessionForUser(GameSession $session, int $userId): GameSession
     {
+        $session->game_session_cover_picture = $this->resolveStoredImagePath($session->game_session_cover_picture);
+        $session->game_session_background_picture = $this->resolveStoredImagePath($session->game_session_background_picture);
+
         $state = $session->state;
         if (!is_array($state) || ($state['type'] ?? null) !== 'uno') {
             return $session;
@@ -525,6 +593,29 @@ class GameSessionController extends BaseController
         $state['players'] = $presentedPlayers;
         $session->state = $state;
         return $session;
+    }
+
+    private function resolveStoredImagePath(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return $this->getS3Url($path, null) ?? $this->getS3Url($path);
+    }
+
+    private function buildImagePrompt(string $name, string $description): string
+    {
+        $prompt = trim($name);
+        $description = trim($description);
+        if ($description !== '') {
+            $prompt .= ' - ' . $description;
+        }
+        return $prompt;
     }
 
     private function generateJoinCode(): string

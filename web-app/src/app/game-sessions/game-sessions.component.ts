@@ -11,6 +11,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-game-sessions',
@@ -25,6 +28,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatInputModule,
     MatSelectModule,
     MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './game-sessions.component.html',
   styleUrl: './game-sessions.component.scss',
@@ -35,12 +39,17 @@ export class GameSessionsComponent implements OnInit {
   private gamesService = inject(GamesService);
   private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   gameSessions = computed(() => this.gameSessionStore.sessions());
   games = signal<Game[]>([]);
 
   createOpen = signal(false);
   joinOpen = signal(false);
+  isGeneratingImage = signal(false);
+
+  // Default SVG as data URL
+  readonly defaultCoverImage = 'data:image/svg+xml,%3Csvg%20width=%22400%22%20height=%22300%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22grad1%22%20x1=%220%25%22%20y1=%220%25%22%20x2=%22100%25%22%20y2=%22100%25%22%3E%3Cstop%20offset=%220%25%22%20style=%22stop-color:%23667eea;stop-opacity:1%22%20/%3E%3Cstop%20offset=%22100%25%22%20style=%22stop-color:%23764ba2;stop-opacity:1%22%20/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%22400%22%20height=%22300%22%20fill=%22url(%23grad1)%22/%3E%3Ccircle%20cx=%2280%22%20cy=%2280%22%20r=%2240%22%20fill=%22%23FF6B6B%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%22320%22%20cy=%2280%22%20r=%2240%22%20fill=%22%234ECDC4%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%2280%22%20cy=%22220%22%20r=%2240%22%20fill=%22%23FFE66D%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%22320%22%20cy=%22220%22%20r=%2240%22%20fill=%22%2395E1D3%22%20opacity=%220.8%22/%3E%3Ctext%20x=%22200%22%20y=%22150%22%20font-size=%2232%22%20font-weight=%22bold%22%20fill=%22white%22%20text-anchor=%22middle%22%20dominant-baseline=%22middle%22%3EGame%20Session%3C/text%3E%3C/svg%3E';
 
   createForm = this.fb.group({
     game_id: [null as number | null, [Validators.required]],
@@ -70,7 +79,7 @@ export class GameSessionsComponent implements OnInit {
         this.gameSessionStore.setGameSessions(response.results);
       },
       error: (error) => {
-        console.error('Error fetching game sessions:', error);
+        this.snackBar.open('Error loading game sessions', 'Close', { duration: 3000 });
       },
     });
   }
@@ -87,7 +96,10 @@ export class GameSessionsComponent implements OnInit {
 
   submitCreate(): void {
     if (!this.createForm.valid) return;
+
     const value = this.createForm.getRawValue();
+    this.isGeneratingImage.set(true);
+
     this.gameSessionService
       .createGameSession({
         game_id: value.game_id!,
@@ -96,9 +108,12 @@ export class GameSessionsComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.snackBar.open('Session created', 'Close', { duration: 3000 });
+          this.snackBar.open('Session created with generated images!', 'Close', {
+            duration: 3000,
+          });
           this.createOpen.set(false);
           this.createForm.reset();
+          this.isGeneratingImage.set(false);
           this.loadMyGameSessions();
         },
         error: (err) => {
@@ -107,6 +122,7 @@ export class GameSessionsComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
+          this.isGeneratingImage.set(false);
         },
       });
   }
@@ -133,6 +149,33 @@ export class GameSessionsComponent implements OnInit {
           duration: 5000,
         });
       },
+    });
+  }
+
+  deleteSession(sessionId: number, sessionName: string): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Session',
+        message: `Are you sure you want to delete "${sessionName}"? This action cannot be undone.`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.gameSessionService.deleteGameSession(sessionId).subscribe({
+          next: () => {
+            this.snackBar.open('Session deleted', 'Close', { duration: 3000 });
+            this.loadMyGameSessions();
+          },
+          error: (err) => {
+            this.snackBar.open(
+              err?.error?.message || 'Failed to delete session',
+              'Close',
+              { duration: 5000 }
+            );
+          },
+        });
+      }
     });
   }
 }
