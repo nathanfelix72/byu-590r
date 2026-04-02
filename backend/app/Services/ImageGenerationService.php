@@ -50,8 +50,9 @@ class ImageGenerationService
         try {
             return $this->storeImageFromUrl($imageUrl, $type, $sessionId);
         } catch (Exception $e) {
-            // Keep session creation resilient in local/dev when bind-mounted storage is not writable.
-            \Log::warning('Falling back to provider-hosted image URL', [
+            // Keep session creation resilient when storage is temporarily unavailable.
+            \Log::warning('Image storage failed; falling back to provider-hosted URL (image will not be in configured storage)', [
+                'disk' => $this->resolveStorageDisk(),
                 'type' => $type,
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
