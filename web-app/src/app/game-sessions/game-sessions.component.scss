@@ -1,7 +1,34 @@
+.tab-label {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.panel-container {
+  padding: 20px 0;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.empty-state a {
+  color: #3f51b5;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.empty-state a:hover {
+  color: #303f9f;
+}
+
 .actions {
   display: flex;
   gap: 12px;
   align-items: center;
+  margin-bottom: 20px;
 }
 
 .panel {
@@ -41,6 +68,13 @@
   opacity: 0.75;
   font-size: 12px;
   margin-bottom: 10px;
+}
+
+.sessionCard__players {
+  opacity: 0.8;
+  font-size: 12px;
+  margin-bottom: 10px;
+  line-height: 1.4;
 }
 
 .sessionCard__chips {

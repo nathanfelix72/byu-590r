@@ -5,6 +5,9 @@ import {
   OnDestroy,
   inject,
   signal,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -47,7 +50,9 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
   templateUrl: './game-session-detail.component.html',
   styleUrl: './game-session-detail.component.scss',
 })
-export class GameSessionDetailComponent implements OnInit, OnDestroy {
+export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('myHandContainer') myHandContainer?: ElementRef;
+  
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private service = inject(GameSessionService);
@@ -63,6 +68,7 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
   isLoading = signal(false);
   unoBackgroundImage = signal<string | null>(null);
   private lastWinnerSeen = signal<number | null>(null);
+  containerWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 800);
 
   private opponentBacksCap = 20;
 
@@ -100,9 +106,28 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     this.scheduleRealtimeAttach(0);
   }
 
+  ngAfterViewInit(): void {
+    // Trigger change detection when container is ready
+    setTimeout(() => {
+      this.containerWidth.set(this.getHandContainerWidth());
+    }, 0);
+  }
+
   ngOnDestroy(): void {
     this.realtime.leave(`game-session.${this.sessionId()}`);
     this.realtimeBoundSessionId = null;
+  }
+
+  private getHandContainerWidth(): number {
+    if (this.myHandContainer?.nativeElement) {
+      return this.myHandContainer.nativeElement.offsetWidth;
+    }
+    return 800; // fallback
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.containerWidth.set(this.getHandContainerWidth());
   }
 
   @HostListener('document:visibilitychange')
@@ -391,6 +416,49 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     return me?.hand ?? [];
   }
 
+  cardOverlapAmount(): number {
+    const count = this.myHand().length;
+    if (count <= 1) return 0;
+    
+    const cardWidth = 110; // md size card width
+    const totalSpaceNeeded = cardWidth * count;
+    const availableWidth = this.containerWidth();
+    const padding = 16; // 8px padding on each side
+    const usableWidth = availableWidth - padding;
+    
+    // If all cards fit without overlap, return 0
+    if (totalSpaceNeeded <= usableWidth) {
+      return 0;
+    }
+    
+    // Calculate overlap needed to fit all cards
+    const spaceToSave = totalSpaceNeeded - usableWidth;
+    const overlap = spaceToSave / (count - 1);
+    
+    return Math.max(0, overlap);
+  }
+
+  opponentCardOverlapAmount(handCount: number): number {
+    if (handCount <= 1) return 0;
+    
+    const cardWidth = 84; // sm size card width
+    const totalSpaceNeeded = cardWidth * handCount;
+    const availableWidth = this.containerWidth() * 0.5; // opponent cards are roughly half width
+    const padding = 16; // padding
+    const usableWidth = availableWidth - padding;
+    
+    // If all cards fit without overlap, return 0
+    if (totalSpaceNeeded <= usableWidth) {
+      return 0;
+    }
+    
+    // Calculate overlap needed to fit all cards
+    const spaceToSave = totalSpaceNeeded - usableWidth;
+    const overlap = spaceToSave / (handCount - 1);
+    
+    return Math.max(0, overlap);
+  }
+
   playersList(): any[] {
     const s: any = this.session();
     return Array.isArray(s?.players) ? s.players : [];
@@ -398,6 +466,12 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
 
   activeLobbyPlayers(): any[] {
     return this.playersList().filter((p: any) => !p.left_at);
+  }
+
+  getTurnDirection(): string {
+    const state = this.unoState;
+    const direction = state?.direction ?? 'clockwise';
+    return direction === 'clockwise' ? 'Clockwise' : 'Counter-clockwise';
   }
 
   cardCountLabelForUser(userId: number): string {
@@ -435,6 +509,13 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy {
     const winnerId = state?.winnerUserId;
     if (winnerId === null || winnerId === undefined) return 'Player';
     return this.nameForUserId(Number(winnerId));
+  }
+
+  formatStatus(status: string): string {
+    return status
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   chooseWildColor(color: 'r' | 'g' | 'b' | 'y'): void {

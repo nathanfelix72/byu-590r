@@ -4,12 +4,14 @@
       <div>
         <div class="page__title">{{ session()!.name }}</div>
         <div class="page__subtitle">
-          Status: <strong>{{ session()!.status }}</strong>
+          @if (session()!.status) {
+            <span>Status: <strong>{{ formatStatus(session()!.status) }}</strong></span>
+          }
           @if (session()!.host?.name) {
             <span class="code"> · Created by: <strong>{{ session()!.host?.name }}</strong></span>
           }
           @if (session()!.join_code) {
-            <span class="code">Join code: {{ session()!.join_code }}</span>
+            <span class="code"> · Join code: {{ session()!.join_code }}</span>
           }
         </div>
       </div>
@@ -39,7 +41,7 @@
           <mat-card-content>
             <div class="chatLog">
               @for (m of chatMessages(); track m.id) {
-                <div class="chatLine">
+                <div class="chatLine" [class.chatLine--mine]="m.user_id === myUserId">
                   <span class="chatLine__who">{{ m.user_name }}</span>
                   <span class="chatLine__text">{{ m.body }}</span>
                 </div>
@@ -103,7 +105,7 @@
                   <div class="opponent__name">{{ nameForUserId(p.user_id) }}</div>
                   <div class="opponent__hand">
                     @if (typeof p.handCount === 'number') {
-                      <div class="opponentHand__rail">
+                      <div class="opponentHand__rail" [style.--card-overlap]="opponentCardOverlapAmount(p.handCount) + 'px'">
                         @for (_ of opponentHandBacks(p.handCount); track $index) {
                           <app-uno-card
                             [card]="{ color: 'w', value: 'wild' }"
@@ -157,40 +159,29 @@
                   ></app-uno-card>
                 }
               </div>
-              <div class="deck">
+              <div class="deck" (click)="isMyTurn && draw()" [class.deck--clickable]="isMyTurn">
                 <app-uno-card [card]="{ color: 'w', value: 'wild' }" [faceDown]="true" size="lg"></app-uno-card>
               </div>
             </div>
-            @if (unoState.pendingDraw > 0) {
+            @if (isMyTurn && unoState.pendingDraw > 0) {
               <div class="pendingDrawHint">Draw {{ unoState.pendingDraw }} card(s).</div>
             }
-            <button
-              mat-stroked-button
-              class="drawBtn"
-              [class.drawBtn--emphasis]="isMyTurn && !hasAnyPlayable() && !wildPickerOpen()"
-              (click)="draw()"
-              [disabled]="!isMyTurn"
-            >
-              Draw
-            </button>
+            <div class="turnDirection">{{ getTurnDirection() }}</div>
           </div>
 
-          <div class="myHand">
-            <div class="myHand__scroll">
-              <div class="myHand__rail" [class.myHand__rail--disabled]="!isMyTurn">
-                @for (c of myHand(); track $index) {
-                  <button
-                    class="fanCard"
-                    type="button"
-                    [class.fanCard--playable]="isMyTurn && isCardPlayable(c)"
-                    [attr.data-hand-card-index]="$index"
-                    (click)="playCard($index)"
-                    [disabled]="!isMyTurn || wildPickerOpen()"
-                  >
-                    <app-uno-card [card]="c" size="md"></app-uno-card>
-                  </button>
-                }
-              </div>
+          <div class="myHand" #myHandContainer [style.--card-overlap]="cardOverlapAmount() + 'px'">
+            <div class="myHand__rail" [class.myHand__rail--disabled]="!isMyTurn">
+              @for (c of myHand(); track $index) {
+                <button
+                  class="fanCard"
+                  type="button"
+                  [attr.data-hand-card-index]="$index"
+                  (click)="playCard($index)"
+                  [disabled]="!isMyTurn || wildPickerOpen()"
+                >
+                  <app-uno-card [card]="c" size="md"></app-uno-card>
+                </button>
+              }
             </div>
           </div>
         </div>

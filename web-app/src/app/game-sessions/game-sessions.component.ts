@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -29,6 +30,7 @@ import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.
     MatSelectModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatTabsModule,
   ],
   templateUrl: './game-sessions.component.html',
   styleUrl: './game-sessions.component.scss',
@@ -43,6 +45,15 @@ export class GameSessionsComponent implements OnInit {
 
   gameSessions = computed(() => this.gameSessionStore.sessions());
   games = signal<Game[]>([]);
+  selectedTab = signal<'in-progress' | 'finished' | 'create'>('in-progress');
+
+  inProgressSessions = computed(() =>
+    this.gameSessions().filter((s) => s.status === 'in_progress')
+  );
+
+  finishedSessions = computed(() =>
+    this.gameSessions().filter((s) => s.status === 'finished')
+  );
 
   createOpen = signal(false);
   joinOpen = signal(false);
@@ -177,6 +188,37 @@ export class GameSessionsComponent implements OnInit {
         });
       }
     });
+  }
+
+  getPlayerNames(session: any): string {
+    if (!session.players || session.players.length === 0) {
+      return 'No players yet';
+    }
+    return session.players
+      .map((p: any) => p.user?.name || 'Player ' + p.user_id)
+      .join(', ');
+  }
+
+  formatStatus(status: string): string {
+    return status
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  getTabIndex(): number {
+    const tab = this.selectedTab();
+    return tab === 'in-progress' ? 0 : tab === 'finished' ? 1 : 2;
+  }
+
+  setTabIndex(index: number): void {
+    if (index === 0) {
+      this.selectedTab.set('in-progress');
+    } else if (index === 1) {
+      this.selectedTab.set('finished');
+    } else {
+      this.selectedTab.set('create');
+    }
   }
 }
 

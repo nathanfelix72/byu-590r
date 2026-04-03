@@ -40,7 +40,6 @@
             <mat-select [value]="sortKey()" (selectionChange)="setSortKey($event.value)">
               <mat-option value="name">Name</mat-option>
               <mat-option value="status">Status</mat-option>
-              <mat-option value="score">Your score</mat-option>
               <mat-option value="players">Players</mat-option>
             </mat-select>
           </mat-form-field>
@@ -56,7 +55,6 @@
           <div class="gamesTable" role="table">
             <div class="gamesTable__row gamesTable__row--head" role="row">
               <span role="columnheader">Game</span>
-              <span role="columnheader">Your score</span>
               <span role="columnheader">Players</span>
               <span role="columnheader">Status</span>
             </div>
@@ -65,9 +63,14 @@
                 <span class="gamesTable__cell gamesTable__cell--name" role="cell">
                   <strong>{{ s.name }}</strong>
                 </span>
-                <span role="cell">{{ myScore(s) }}</span>
                 <span class="gamesTable__cell gamesTable__cell--players" role="cell">{{ playerLine(s) }}</span>
-                <span role="cell"><span class="statusPill">{{ s.status }}</span></span>
+                <span role="cell">
+                  @if (getWinner(s)) {
+                    <span class="statusPill">{{ getWinner(s) }}</span>
+                  } @else {
+                    <span class="statusPill">{{ formatStatus(s.status) }}</span>
+                  }
+                </span>
               </a>
             }
           </div>

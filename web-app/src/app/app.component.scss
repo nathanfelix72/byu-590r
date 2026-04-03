@@ -95,13 +95,38 @@
   gap: spacing.$spacing-extra-small;
 }
 
+.nav a {
+  position: relative;
+  padding: 8px 12px !important;
+  border-radius: 8px;
+  transition: all 200ms ease;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  color: colors.$colors-text-primary !important;
+}
+
+.nav a:hover:not(.nav__active) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 .nav__icon {
   margin-right: spacing.$spacing-small;
+  color: colors.$colors-text-primary !important;
 }
 
 .nav__active {
-  background: rgba(25, 118, 210, 0.08);
-  border-radius: spacing.$border-radius-small;
+  background: rgba(63, 81, 181, 0.15) !important;
+  font-weight: 600 !important;
+}
+
+.nav__active .nav__icon {
+  color: colors.$colors-text-primary !important;
+}
+
+::ng-deep .nav .nav__active .mat-mdc-list-item-title {
+  color: colors.$colors-text-primary !important;
+  font-weight: 600 !important;
 }
 
 .app-main {

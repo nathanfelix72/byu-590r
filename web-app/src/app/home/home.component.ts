@@ -12,7 +12,7 @@ import { GameSessionService, GameSession } from '../core/services/game-session.s
 import { UserService } from '../core/services/user.service';
 import { RealtimeService } from '../core/services/realtime.service';
 
-type SortKey = 'name' | 'status' | 'score' | 'players';
+type SortKey = 'name' | 'status' | 'players';
 
 @Component({
   selector: 'app-home',
@@ -96,6 +96,26 @@ export class HomeComponent {
     });
   }
 
+  formatStatus(status: string): string {
+    return status
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  getWinner(s: GameSession): string {
+    if (s.status !== 'finished' || !s.state) {
+      return '';
+    }
+    const state = typeof s.state === 'string' ? JSON.parse(s.state) : s.state;
+    const winnerId = state?.winnerUserId;
+    if (winnerId === null || winnerId === undefined) {
+      return '';
+    }
+    const winner = this.activePlayers(s).find((p) => Number(p.user_id) === Number(winnerId));
+    return winner?.user?.name || winner?.user_id ? `Winner: ${winner.user?.name || 'Player ' + winner.user_id}` : '';
+  }
+
   activePlayers(s: GameSession) {
     return (s.players || []).filter((p) => !p.left_at);
   }
@@ -118,7 +138,6 @@ export class HomeComponent {
       s.name,
       s.status,
       this.playerLine(s),
-      String(this.myScore(s)),
     ]
       .join(' ')
       .toLowerCase();
@@ -126,11 +145,17 @@ export class HomeComponent {
   }
 
   private compareSessions(a: GameSession, b: GameSession, key: SortKey): number {
+    // Finished games always go to the end
+    if (a.status === 'finished' && b.status !== 'finished') {
+      return 1;
+    }
+    if (b.status === 'finished' && a.status !== 'finished') {
+      return -1;
+    }
+    
     switch (key) {
       case 'status':
         return String(a.status).localeCompare(String(b.status));
-      case 'score':
-        return this.myScore(a) - this.myScore(b);
       case 'players':
         return this.playerLine(a).localeCompare(this.playerLine(b));
       case 'name':
