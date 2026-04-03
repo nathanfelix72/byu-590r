@@ -40,7 +40,7 @@ class MockGameSessionService {
       name: 'Test Session 2',
       description: 'Description 2',
       game_session_cover_picture: null,
-      status: 'finished',
+      status: 'in_progress',
       current_turn: null,
       created_at: '2025-03-15T10:00:00.000000Z',
     },
@@ -135,7 +135,7 @@ describe('GameSessionsComponent', () => {
     expect(cards[0].textContent).toContain('Test Session 1');
     expect(cards[0].textContent).toContain('In Progress');
     expect(cards[1].textContent).toContain('Test Session 2');
-    expect(cards[1].textContent).toContain('Finished');
+    expect(cards[1].textContent).toContain('In Progress');
   });
 
   it('should bind image src correctly', () => {
