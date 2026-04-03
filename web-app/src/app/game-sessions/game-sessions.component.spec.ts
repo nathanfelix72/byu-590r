@@ -1,3 +1,4 @@
+/// <reference types="jasmine" />
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -39,7 +40,7 @@ class MockGameSessionService {
       name: 'Test Session 2',
       description: 'Description 2',
       game_session_cover_picture: null,
-      status: 'waiting',
+      status: 'finished',
       current_turn: null,
       created_at: '2025-03-15T10:00:00.000000Z',
     },
@@ -132,9 +133,9 @@ describe('GameSessionsComponent', () => {
     const cards = compiled.querySelectorAll('.sessionCard');
     expect(cards.length).toBe(2);
     expect(cards[0].textContent).toContain('Test Session 1');
-    expect(cards[0].textContent).toContain('in_progress');
+    expect(cards[0].textContent).toContain('In Progress');
     expect(cards[1].textContent).toContain('Test Session 2');
-    expect(cards[1].textContent).toContain('waiting');
+    expect(cards[1].textContent).toContain('Finished');
   });
 
   it('should bind image src correctly', () => {
@@ -142,12 +143,17 @@ describe('GameSessionsComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const images = compiled.querySelectorAll('.sessionCard img');
 
-    expect(images[0].getAttribute('src')).toBe(
-      'https://example.com/cover1.jpg'
-    );
-    expect(images[1].getAttribute('src')).toBe(
-      component.defaultCoverImage
-    );
+    expect(images.length).toBeGreaterThanOrEqual(2);
+    if (images[0]) {
+      expect(images[0].getAttribute('src')).toBe(
+        'https://example.com/cover1.jpg'
+      );
+    }
+    if (images[1]) {
+      expect(images[1].getAttribute('src')).toBe(
+        component.defaultCoverImage
+      );
+    }
   });
 }
 );
