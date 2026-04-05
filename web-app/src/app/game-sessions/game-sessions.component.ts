@@ -48,7 +48,7 @@ export class GameSessionsComponent implements OnInit {
   selectedTab = signal<'in-progress' | 'finished' | 'create'>('in-progress');
 
   inProgressSessions = computed(() =>
-    this.gameSessions().filter((s) => s.status === 'in_progress')
+    this.gameSessions().filter((s) => s.status === 'waiting' || s.status === 'in_progress')
   );
 
   finishedSessions = computed(() =>

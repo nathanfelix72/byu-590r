@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class GameSessionController extends BaseController
 {
-    public function __construct(private UnoEngine $uno)
+    public function __construct(private UnoEngine $uno, private ImageGenerationService $imageGenerationService)
     {
     }
 
@@ -605,7 +605,8 @@ class GameSessionController extends BaseController
             return $path;
         }
 
-        return $this->getS3Url($path, null) ?? $this->getS3Url($path);
+        // Use ImageGenerationService to convert storage paths to presigned URLs
+        return $this->imageGenerationService->storedPathToUrl($path);
     }
 
     private function buildImagePrompt(string $name, string $description): string

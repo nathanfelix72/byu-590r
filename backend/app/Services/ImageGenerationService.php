@@ -62,12 +62,28 @@ class ImageGenerationService
     }
 
     /**
-     * Resolve a stored path to a public URL for API responses.
+     * Resolve a stored path to a public/presigned URL for API responses.
      */
     public function storedPathToUrl(string $path): string
     {
         $disk = $this->resolveStorageDisk();
-        return Storage::disk($disk)->url($path);
+        
+        // For local disk, use regular public URLs
+        if ($disk === 'public') {
+            return Storage::disk($disk)->url($path);
+        }
+        
+        // For S3, use presigned URLs (10 minute expiration) to handle private buckets
+        try {
+            return Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(10));
+        } catch (\Exception $e) {
+            \Log::warning('Failed to generate presigned URL, falling back to regular URL', [
+                'error' => $e->getMessage(),
+                'path' => $path,
+            ]);
+            // Fallback to regular URL (will fail if bucket is private, but better than nothing)
+            return Storage::disk($disk)->url($path);
+        }
     }
 
     /**
@@ -182,7 +198,11 @@ class ImageGenerationService
 
             $this->ensureStorageTargetReady($disk, 'generated-images');
 
-            $writeResult = Storage::disk($disk)->put($path, $imageContent, ['visibility' => 'public']);
+            // For S3, don't set visibility (bucket has ACLs disabled and is private)
+            // For local/public disk, set visibility to public
+            $writeOptions = ($disk === 's3') ? [] : ['visibility' => 'public'];
+            
+            $writeResult = Storage::disk($disk)->put($path, $imageContent, $writeOptions);
             if ($writeResult !== true) {
                 throw new Exception("Storage write returned false for disk '{$disk}' at path '{$path}'");
             }

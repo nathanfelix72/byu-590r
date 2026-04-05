@@ -6,6 +6,7 @@ services:
         working_dir: /var/www
         volumes:
             - .:/var/www
+        env_file: .env
         environment:
             REVERB_HOST: reverb
         networks:
@@ -22,6 +23,7 @@ services:
         command: php artisan reverb:start --host=0.0.0.0 --port=8080
         volumes:
             - .:/var/www
+        env_file: .env
         networks:
             - app_network
         depends_on:
