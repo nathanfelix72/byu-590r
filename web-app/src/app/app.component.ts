@@ -1,6 +1,9 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { map } from 'rxjs/operators';
 import { AuthStore } from './core/stores/auth.store';
 import { UserStore } from './core/stores/user.store';
 import { UserService } from './core/services/user.service';
@@ -40,6 +43,13 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
   private realtime = inject(RealtimeService);
+  private breakpointObserver = inject(BreakpointObserver);
+
+  /** Primary + session sub-nav collapse into the menu at this width (see template + SCSS). */
+  navCompact = toSignal(
+    this.breakpointObserver.observe('(max-width: 900px)').pipe(map((r) => r.matches)),
+    { initialValue: false }
+  );
 
   theme = signal<'light' | 'dark'>('light');
   profileDialog = signal(false);
@@ -89,6 +99,18 @@ export class AppComponent implements OnInit {
     return this.router.url.startsWith('/game-sessions');
   }
 
+  /**
+   * Tab state for the game-sessions sub-nav. Defaults to Active when the URL has no
+   * ?tab= (so highlighting matches the list view and routerLinkActive).
+   */
+  gameSessionsListTab(): 'in-progress' | 'finished' | 'create' {
+    const tab = this.router.parseUrl(this.router.url).queryParams['tab'];
+    if (tab === 'finished' || tab === 'create' || tab === 'in-progress') {
+      return tab;
+    }
+    return 'in-progress';
+  }
+
   changeTheme(): void {
     this.theme.set(this.theme() === 'light' ? 'dark' : 'light');
   }
@@ -129,7 +151,22 @@ export class AppComponent implements OnInit {
     this.profileIsUploading.set(true);
     this.userService.uploadAvatar(input.files[0]).subscribe({
       next: (response) => {
-        this.authStore.updateAvatar(response.results.avatar);
+        const url = response.results?.avatar;
+        if (!url) {
+          this.snackBar.open(
+            'Upload saved, but the image URL could not be resolved. Check server storage (S3 or public disk).',
+            'Close',
+            {
+              duration: 8000,
+              horizontalPosition: 'center',
+              verticalPosition: 'top',
+              panelClass: ['error-snackbar'],
+            }
+          );
+          this.profileIsUploading.set(false);
+          return;
+        }
+        this.authStore.updateAvatar(url);
         this.profileIsUploading.set(false);
       },
       error: () => {

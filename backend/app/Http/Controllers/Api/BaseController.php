@@ -77,15 +77,18 @@ class BaseController extends Controller
 
     /**
      * Whether to resolve image URLs from local storage (public disk) instead of S3.
+     * Must stay aligned with UserController::avatarDisk(): if S3 is configured, URLs must
+     * come from S3 even when the default filesystem is "local" in .env.
      */
     protected function useLocalStorageForImages(): bool
     {
-        if (in_array(config('filesystems.default'), ['local', 'development', 'dev'], true)) {
-            return true;
-        }
         $key = config('filesystems.disks.s3.key');
         $bucket = config('filesystems.disks.s3.bucket');
-        return empty($key) || empty($bucket);
+        if (!empty($key) && !empty($bucket)) {
+            return false;
+        }
+
+        return true;
     }
 }
 

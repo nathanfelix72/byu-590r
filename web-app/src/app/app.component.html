@@ -5,22 +5,37 @@
 >
   @if (isAuthenticated) {
     <mat-toolbar class="app-bar">
-      <div class="app-shellTop">
+      <div class="app-shellTop" [class.app-shellTop--compact]="navCompact()">
+        @if (navCompact()) {
+          <button
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="navMenu"
+            class="toolbar-icon app-shellTop__menuBtn"
+            aria-label="Open navigation menu"
+            aria-haspopup="menu"
+          >
+            <mat-icon>menu</mat-icon>
+          </button>
+        }
+
         <div class="app-bar__brand" routerLink="/home" tabindex="0" role="link">
           <span class="app-bar__brandTitle">Boardroom</span>
           <span class="app-bar__brandTag">turn-based games</span>
         </div>
 
-        <nav class="primary-nav" aria-label="Primary">
-          <a routerLink="/home" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
-            <mat-icon>dashboard</mat-icon>
-            <span>Dashboard</span>
-          </a>
-          <a routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
-            <mat-icon>sports_esports</mat-icon>
-            <span>Game Sessions</span>
-          </a>
-        </nav>
+        @if (!navCompact()) {
+          <nav class="primary-nav" aria-label="Primary">
+            <a routerLink="/home" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
+              <mat-icon>sports_esports</mat-icon>
+              <span>Game Sessions</span>
+            </a>
+          </nav>
+        }
 
         <div class="app-shellTop__actions">
           <button mat-icon-button (click)="changeTheme()" class="toolbar-icon" aria-label="Toggle theme">
@@ -29,12 +44,15 @@
 
           <button
             mat-icon-button
+            type="button"
             [matMenuTriggerFor]="profileMenu"
             class="avatar-button"
             aria-label="Profile menu"
           >
             @if (avatarURL) {
-              <img [src]="avatarURL" alt="Avatar" class="avatar-image" />
+              <span class="avatar-button__inner" aria-hidden="true">
+                <img [src]="avatarURL" alt="" class="avatar-image" />
+              </span>
             } @else {
               <mat-icon>account_circle</mat-icon>
             }
@@ -42,35 +60,76 @@
         </div>
       </div>
 
-      @if (isGameSessionsRoute()) {
+      @if (isGameSessionsRoute() && !navCompact()) {
         <nav class="secondary-nav" aria-label="Session categories">
-          <a
-            routerLink="/game-sessions"
-            [queryParams]="{ tab: 'in-progress' }"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
-          >
-            Active
-          </a>
-          <a
-            routerLink="/game-sessions"
-            [queryParams]="{ tab: 'finished' }"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
-          >
-            Completed
-          </a>
-          <a
-            routerLink="/game-sessions"
-            [queryParams]="{ tab: 'create' }"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
-          >
-            Create/Join
-          </a>
+          <div class="secondary-nav__track">
+            <a
+              routerLink="/game-sessions"
+              [queryParams]="{ tab: 'in-progress' }"
+              [class.is-active]="gameSessionsListTab() === 'in-progress'"
+            >
+              Active
+            </a>
+            <a
+              routerLink="/game-sessions"
+              [queryParams]="{ tab: 'finished' }"
+              [class.is-active]="gameSessionsListTab() === 'finished'"
+            >
+              Completed
+            </a>
+            <a
+              routerLink="/game-sessions"
+              [queryParams]="{ tab: 'create' }"
+              [class.is-active]="gameSessionsListTab() === 'create'"
+            >
+              Create/Join
+            </a>
+          </div>
         </nav>
       }
     </mat-toolbar>
+
+    <mat-menu #navMenu="matMenu" panelClass="nav-overflow-menu">
+      <a mat-menu-item routerLink="/home" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
+        <mat-icon>dashboard</mat-icon>
+        <span>Dashboard</span>
+      </a>
+      <a mat-menu-item routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
+        <mat-icon>sports_esports</mat-icon>
+        <span>Game Sessions</span>
+      </a>
+      @if (isGameSessionsRoute()) {
+        <mat-divider></mat-divider>
+        <div class="nav-menu__section" aria-hidden="true">Sessions</div>
+        <a
+          mat-menu-item
+          routerLink="/game-sessions"
+          [queryParams]="{ tab: 'in-progress' }"
+          [class.is-active]="gameSessionsListTab() === 'in-progress'"
+        >
+          <mat-icon>play_circle</mat-icon>
+          <span>Active</span>
+        </a>
+        <a
+          mat-menu-item
+          routerLink="/game-sessions"
+          [queryParams]="{ tab: 'finished' }"
+          [class.is-active]="gameSessionsListTab() === 'finished'"
+        >
+          <mat-icon>check_circle</mat-icon>
+          <span>Completed</span>
+        </a>
+        <a
+          mat-menu-item
+          routerLink="/game-sessions"
+          [queryParams]="{ tab: 'create' }"
+          [class.is-active]="gameSessionsListTab() === 'create'"
+        >
+          <mat-icon>add_circle_outline</mat-icon>
+          <span>Create/Join</span>
+        </a>
+      }
+    </mat-menu>
 
     <mat-menu #profileMenu="matMenu">
       <div class="profile-menu-header">

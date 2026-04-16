@@ -46,14 +46,7 @@
                       </div>
                       <div class="sessionCard__desc">{{ session.description }}</div>
                       <div class="sessionCard__createdBy">
-                        <span class="avatar-circle">
-                          @if (session.host?.avatar) {
-                            <img [src]="session.host?.avatar" alt="Host avatar" class="avatar-img" />
-                          } @else {
-                            <span class="avatar-icon">👤</span>
-                          }
-                        </span>
-                        <span>Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}</span>
+                        Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
                       </div>
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}
@@ -115,14 +108,7 @@
                       </div>
                       <div class="sessionCard__desc">{{ session.description }}</div>
                       <div class="sessionCard__createdBy">
-                        <span class="avatar-circle">
-                          @if (session.host?.avatar) {
-                            <img [src]="session.host?.avatar" alt="Host avatar" class="avatar-img" />
-                          } @else {
-                            <span class="avatar-icon">👤</span>
-                          }
-                        </span>
-                        <span>Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}</span>
+                        Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
                       </div>
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}

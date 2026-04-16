@@ -60,9 +60,14 @@ export class GameSessionsComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.applyTabFromParam(this.route.snapshot.queryParamMap.get('tab'));
     this.route.queryParamMap.subscribe((params) => {
-      this.applyTabFromParam(params.get('tab'));
+      const tab = params.get('tab');
+      if (tab === 'in-progress' || tab === 'finished' || tab === 'create') {
+        this.selectedTab.set(tab);
+      } else {
+        this.selectedTab.set('in-progress');
+        this.updateTabQuery('in-progress');
+      }
     });
 
     this.loadGames();
@@ -258,10 +263,5 @@ export class GameSessionsComponent implements OnInit {
     });
   }
 
-  private applyTabFromParam(tab: string | null): void {
-    if (tab === 'in-progress' || tab === 'finished' || tab === 'create') {
-      this.selectedTab.set(tab);
-    }
-  }
 }
 
