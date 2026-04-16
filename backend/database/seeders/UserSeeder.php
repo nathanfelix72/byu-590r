@@ -27,5 +27,18 @@ class UserSeeder extends Seeder
                 'updated_at' => Carbon::now(),
             ]
         );
+
+        // Pre-seeded account for course grading (submit this email + password in your deliverable).
+        User::updateOrCreate(
+            ['email' => 'byu590r.grader@example.com'],
+            [
+                'name' => 'BYU 590R Grader',
+                'email' => 'byu590r.grader@example.com',
+                'email_verified_at' => null,
+                'password' => bcrypt('Byu590rGrader!2026'),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
     }
 }

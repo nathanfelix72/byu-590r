@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GameSession extends Model
@@ -53,6 +55,16 @@ class GameSession extends Model
     public function chatMessages(): HasMany
     {
         return $this->hasMany(GameSessionMessage::class, 'game_session_id');
+    }
+
+    public function detail(): HasOne
+    {
+        return $this->hasOne(GameSessionDetail::class);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)->withTimestamps();
     }
 }
 

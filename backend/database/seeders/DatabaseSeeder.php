@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             GameSeeder::class,
             ProfileSeeder::class,
             GenreSeeder::class,
+            TagSeeder::class,
             GameSessionSeeder::class,
         ]);
     }

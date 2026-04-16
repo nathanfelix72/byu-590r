@@ -3,26 +3,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { provideMockStore } from '@ngrx/store/testing';
+import { provideEffects } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { GameSessionsComponent } from './game-sessions.component';
-import { GameSessionStore } from '../core/stores/game-session.store';
 import {
   GameSession,
   GameSessionService,
 } from '../core/services/game-session.service';
 import { GamesService } from '../core/services/games.service';
-
-class MockGameSessionStore {
-  private _sessions: GameSession[] = [];
-
-  sessions() {
-    return this._sessions;
-  }
-
-  setGameSessions(sessions: GameSession[]): void {
-    this._sessions = sessions;
-  }
-}
+import { AuthStore } from '../core/stores/auth.store';
+import { GameSessionsEffects } from '../state/game-sessions/game-sessions.effects';
 
 class MockGameSessionService {
   private sessions: GameSession[] = [
@@ -34,6 +25,7 @@ class MockGameSessionService {
       status: 'in_progress',
       current_turn: 0,
       created_at: '2025-03-16T12:00:00.000000Z',
+      host_user_id: 1,
     },
     {
       id: 2,
@@ -43,6 +35,7 @@ class MockGameSessionService {
       status: 'in_progress',
       current_turn: null,
       created_at: '2025-03-15T10:00:00.000000Z',
+      host_user_id: 2,
     },
   ];
 
@@ -54,7 +47,6 @@ class MockGameSessionService {
     });
   }
 
-  // Legacy method still referenced elsewhere sometimes
   getGameSessions() {
     return of({
       success: true,
@@ -86,6 +78,10 @@ class MockGameSessionService {
       message: 'Joined game session',
     });
   }
+
+  deleteGameSession() {
+    return of({ success: true, results: {}, message: 'ok' });
+  }
 }
 
 class MockGamesService {
@@ -96,25 +92,65 @@ class MockGamesService {
       message: 'Games',
     });
   }
+
+  getTags() {
+    return of({
+      success: true,
+      results: [],
+      message: 'Tags',
+    });
+  }
 }
+
+const mockAuth = {
+  user: () => ({ id: 1, name: 'Tester', token: 't' }),
+};
 
 describe('GameSessionsComponent', () => {
   let component: GameSessionsComponent;
   let fixture: ComponentFixture<GameSessionsComponent>;
-  let store: MockGameSessionStore;
 
   beforeEach(async () => {
-    store = new MockGameSessionStore();
-
     await TestBed.configureTestingModule({
       imports: [GameSessionsComponent],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: GameSessionStore, useValue: store },
+        provideMockStore({
+          initialState: {
+            gameSessions: {
+              sessions: [
+                {
+                  id: 1,
+                  name: 'Test Session 1',
+                  description: 'Description 1',
+                  game_session_cover_picture: 'https://example.com/cover1.jpg',
+                  status: 'in_progress',
+                  current_turn: 0,
+                  created_at: '2025-03-16T12:00:00.000000Z',
+                  host_user_id: 1,
+                },
+                {
+                  id: 2,
+                  name: 'Test Session 2',
+                  description: 'Description 2',
+                  game_session_cover_picture: null,
+                  status: 'in_progress',
+                  current_turn: null,
+                  created_at: '2025-03-15T10:00:00.000000Z',
+                  host_user_id: 2,
+                },
+              ],
+              loading: false,
+              error: null,
+            },
+          },
+        }),
+        provideEffects([GameSessionsEffects]),
         { provide: GameSessionService, useClass: MockGameSessionService },
         { provide: GamesService, useClass: MockGamesService },
+        { provide: AuthStore, useValue: mockAuth },
       ],
     }).compileComponents();
 
@@ -155,6 +191,4 @@ describe('GameSessionsComponent', () => {
       );
     }
   });
-}
-);
-
+});

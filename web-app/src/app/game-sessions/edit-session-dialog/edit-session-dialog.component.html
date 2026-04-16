@@ -1,0 +1,71 @@
+<h2 mat-dialog-title>Edit session</h2>
+<mat-dialog-content class="dialogBody">
+  <form [formGroup]="form" class="stack">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" autocomplete="off" />
+      @if (form.controls.name.touched && form.controls.name.errors?.['required']) {
+        <mat-error>Name is required</mat-error>
+      }
+      @if (form.controls.name.touched && form.controls.name.errors?.['minlength']) {
+        <mat-error>At least 2 characters</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Game</mat-label>
+      <mat-select formControlName="game_id" [disabled]="data.session.status !== 'waiting'">
+        @for (g of data.games; track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+      @if (data.session.status !== 'waiting') {
+        <mat-hint>Game can only be changed while waiting for players.</mat-hint>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Host notes (1:1 detail)</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Max players cap (optional)</mat-label>
+      <input matInput type="number" formControlName="max_players_cap" min="2" max="20" />
+      @if (form.controls.max_players_cap.touched && form.controls.max_players_cap.errors?.['roomSize']) {
+        <mat-error>Enter a number between 2 and 20, or leave blank</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Tags</mat-label>
+      <mat-select formControlName="tag_ids" multiple>
+        @for (t of data.tags; track t.id) {
+          <mat-option [value]="t.id">{{ t.name }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Multi-select — describe the vibe of this room.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Background image URL (optional)</mat-label>
+      <input matInput type="url" formControlName="game_session_background_picture" />
+      <mat-hint>Paste a full https:// URL to replace the board background.</mat-hint>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()" [disabled]="saving">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="saving || !form.valid">
+    @if (saving) {
+      <mat-spinner diameter="20" />
+    } @else {
+      Save
+    }
+  </button>
+</mat-dialog-actions>

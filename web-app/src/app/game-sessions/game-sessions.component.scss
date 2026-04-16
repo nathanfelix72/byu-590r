@@ -225,6 +225,54 @@
   white-space: nowrap;
 }
 
+.chip--tag {
+  background: color-mix(in srgb, var(--surface-elevated-2) 70%, #5ca27c 30%);
+  border-color: color-mix(in srgb, var(--border-muted) 70%, #5ca27c 30%);
+}
+
+.list-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.inline-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.inline-alert--error {
+  background: color-mix(in srgb, #c62828 12%, transparent);
+  border: 1px solid color-mix(in srgb, #c62828 35%, transparent);
+  color: #5d1a1a;
+}
+
+.form--material {
+  .form__full {
+    width: 100%;
+  }
+
+  .form__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+}
+
+.btn-spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -319,6 +367,38 @@
   }
 }
 
+.sessionCard__edit {
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 90, 72, 0.92);
+  color: white;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+  }
+
+  &:hover {
+    background: rgba(45, 90, 72, 1);
+  }
+}
+
+.sessionCard:hover .sessionCard__edit,
 .sessionCard:hover .sessionCard__delete {
   opacity: 1;
 }

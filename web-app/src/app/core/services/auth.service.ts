@@ -20,6 +20,8 @@ export interface RegisterRequest {
 export interface AuthResponse {
   token: string;
   name: string;
+  /** Present after login/register once API includes it (used for host-only UI). */
+  id?: number;
   avatar?: string | null;
 }
 

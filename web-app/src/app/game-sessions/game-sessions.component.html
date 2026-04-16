@@ -13,6 +13,17 @@
   </header>
 
   <div class="tab-content">
+    @if (sessionsLoading()) {
+      <div class="list-loading" aria-busy="true">
+        <mat-spinner diameter="36" />
+        <span>Loading your sessions…</span>
+      </div>
+    }
+    @if (sessionsError()) {
+      <div class="inline-alert inline-alert--error" role="alert">
+        {{ sessionsError() }}
+      </div>
+    }
     @if (selectedTab() === 'in-progress') {
       <div class="card-grid">
         @if (inProgressSessions().length === 0) {
@@ -58,18 +69,32 @@
                         @if (session.players) {
                           <span class="chip">{{ session.players.length }} player(s)</span>
                         }
+                        @for (tg of session.tags || []; track tg.id) {
+                          <span class="chip chip--tag">{{ tg.name }}</span>
+                        }
                       </div>
                     </div>
                   </div>
                 </div>
               </a>
-              <button 
-                class="sessionCard__delete"
-                (click)="deleteSession(session.id, session.name)"
-                title="Delete session"
-              >
-                ×
-              </button>
+              @if (isHost(session)) {
+                <button
+                  type="button"
+                  class="sessionCard__edit"
+                  (click)="openEdit(session); $event.stopPropagation()"
+                  title="Edit session"
+                >
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="sessionCard__delete"
+                  (click)="deleteSession(session.id, session.name); $event.stopPropagation()"
+                  title="Delete session"
+                >
+                  ×
+                </button>
+              }
             </div>
           }
         }
@@ -120,18 +145,32 @@
                         @if (session.players) {
                           <span class="chip">{{ session.players.length }} player(s)</span>
                         }
+                        @for (tg of session.tags || []; track tg.id) {
+                          <span class="chip chip--tag">{{ tg.name }}</span>
+                        }
                       </div>
                     </div>
                   </div>
                 </div>
               </a>
-              <button 
-                class="sessionCard__delete"
-                (click)="deleteSession(session.id, session.name)"
-                title="Delete session"
-              >
-                ×
-              </button>
+              @if (isHost(session)) {
+                <button
+                  type="button"
+                  class="sessionCard__edit"
+                  (click)="openEdit(session); $event.stopPropagation()"
+                  title="Edit session"
+                >
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="sessionCard__delete"
+                  (click)="deleteSession(session.id, session.name); $event.stopPropagation()"
+                  title="Delete session"
+                >
+                  ×
+                </button>
+              }
             </div>
           }
         }
@@ -149,26 +188,61 @@
           <div class="panel card">
             <div class="card__title">Create session</div>
             <div class="card__content">
-              <form [formGroup]="createForm" class="form">
-                <div class="form-group">
-                  <label for="game-select">Game</label>
-                  <select id="game-select" formControlName="game_id" class="form-control">
-                    <option value="" disabled selected>Select a game</option>
+              <form [formGroup]="createForm" class="form form--material">
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Game</mat-label>
+                  <mat-select formControlName="game_id" placeholder="Select a game">
                     @for (g of games(); track g.id) {
-                      <option [value]="g.id">{{ g.name }}</option>
+                      <mat-option [value]="g.id">{{ g.name }}</mat-option>
                     }
-                  </select>
-                </div>
+                  </mat-select>
+                  @if (createForm.controls.game_id.touched && createForm.controls.game_id.errors?.['required']) {
+                    <mat-error>Choose a game</mat-error>
+                  }
+                </mat-form-field>
 
-                <div class="form-group">
-                  <label for="session-name">Name</label>
-                  <input id="session-name" type="text" formControlName="name" class="form-control" />
-                </div>
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Session name</mat-label>
+                  <input matInput formControlName="name" autocomplete="off" />
+                  @if (createForm.controls.name.touched && createForm.controls.name.errors?.['required']) {
+                    <mat-error>Name is required</mat-error>
+                  }
+                  @if (createForm.controls.name.touched && createForm.controls.name.errors?.['minlength']) {
+                    <mat-error>At least 2 characters</mat-error>
+                  }
+                </mat-form-field>
 
-                <div class="form-group">
-                  <label for="session-desc">Description</label>
-                  <textarea id="session-desc" formControlName="description" class="form-control" rows="3"></textarea>
-                </div>
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Description</mat-label>
+                  <textarea matInput formControlName="description" rows="2"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Host notes (optional)</mat-label>
+                  <textarea matInput formControlName="notes" rows="2"></textarea>
+                  <mat-hint>Stored as 1:1 session detail</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Max players cap (optional)</mat-label>
+                  <input matInput type="number" formControlName="max_players_cap" min="2" max="20" />
+                  @if (
+                    createForm.controls.max_players_cap.touched &&
+                    createForm.controls.max_players_cap.errors?.['roomSize']
+                  ) {
+                    <mat-error>Enter 2–20 or leave blank</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form__full">
+                  <mat-label>Tags</mat-label>
+                  <mat-select formControlName="tag_ids" multiple>
+                    @for (t of tags(); track t.id) {
+                      <mat-option [value]="t.id">{{ t.name }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>Multi-select — pick one or more</mat-hint>
+                </mat-form-field>
 
                 <div class="form__footer">
                   <button type="button" class="btn btn--secondary" (click)="createOpen.set(false)">
@@ -181,7 +255,8 @@
                     [disabled]="!createForm.valid || isGeneratingImage()"
                   >
                     @if (isGeneratingImage()) {
-                      <span>Generating AI Cover...</span>
+                      <mat-spinner diameter="20" class="btn-spinner" />
+                      <span>Generating…</span>
                     } @else {
                       <span>Create</span>
                     }

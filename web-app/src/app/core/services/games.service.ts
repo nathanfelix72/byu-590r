@@ -13,6 +13,12 @@ export interface Game {
   max_players: number;
 }
 
+export interface GameTag {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GamesService {
   private http = inject(HttpClient);
@@ -30,6 +36,13 @@ export class GamesService {
   getGames(): Observable<{ success: boolean; results: Game[]; message: string }> {
     return this.http.get<{ success: boolean; results: Game[]; message: string }>(
       `${this.apiUrl}games`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  getTags(): Observable<{ success: boolean; results: GameTag[]; message: string }> {
+    return this.http.get<{ success: boolean; results: GameTag[]; message: string }>(
+      `${this.apiUrl}tags`,
       { headers: this.getAuthHeaders() }
     );
   }

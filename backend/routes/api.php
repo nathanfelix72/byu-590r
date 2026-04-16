@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\HelloWorldController;
 use App\Http\Controllers\Api\GameSessionController;
+use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\ImageGenerationController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\UserController;
@@ -34,6 +35,7 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
     });
 
     Route::get('games', [GameController::class, 'index']);
+    Route::get('tags', [TagController::class, 'index']);
 
     // Legacy list endpoint (kept for backward compatibility with existing frontend)
     Route::apiResource('gamesessions', GameSessionController::class)->only(['index']);

@@ -28,6 +28,19 @@ export interface GameSessionChatMessage {
   created_at?: string | null;
 }
 
+export interface GameSessionTag {
+  id: number;
+  name: string;
+  slug?: string;
+}
+
+export interface GameSessionDetail {
+  id?: number;
+  game_session_id?: number;
+  notes: string | null;
+  max_players_cap: number | null;
+}
+
 export interface GameSession {
   id: number;
   game_id?: number | null;
@@ -48,6 +61,8 @@ export interface GameSession {
   state?: any;
   version?: number;
   created_at: string;
+  detail?: GameSessionDetail | null;
+  tags?: GameSessionTag[];
 }
 
 @Injectable({
@@ -96,6 +111,9 @@ export class GameSessionService {
     game_id: number;
     name: string;
     description?: string;
+    notes?: string | null;
+    max_players_cap?: number | null;
+    tag_ids?: number[];
   }): Observable<{ success: boolean; results: GameSession; message: string }> {
     return this.http.post<{ success: boolean; results: GameSession; message: string }>(
       `${this.apiUrl}game-sessions`,
@@ -235,6 +253,25 @@ export class GameSessionService {
     return this.http.patch<{ success: boolean; results: GameSession; message: string }>(
       `${this.apiUrl}game-sessions/${id}`,
       { game_session_background_picture: backgroundUrl },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  updateGameSession(
+    id: number,
+    payload: {
+      name?: string;
+      description?: string;
+      game_id?: number;
+      game_session_background_picture?: string | null;
+      notes?: string | null;
+      max_players_cap?: number | null;
+      tag_ids?: number[];
+    }
+  ): Observable<{ success: boolean; results: GameSession; message: string }> {
+    return this.http.patch<{ success: boolean; results: GameSession; message: string }>(
+      `${this.apiUrl}game-sessions/${id}`,
+      payload,
       { headers: this.getAuthHeaders() }
     );
   }

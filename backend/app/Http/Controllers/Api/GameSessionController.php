@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\GameSession;
+use App\Models\GameSessionDetail;
 use App\Models\GameSessionMessage;
 use App\Models\UserGameSession;
 use App\Events\GameSessionChatMessage;
@@ -27,7 +28,7 @@ class GameSessionController extends BaseController
      */
     public function index()
     {
-        $sessions = GameSession::orderBy('name', 'asc')->get();
+        $sessions = GameSession::with(['game', 'detail', 'tags'])->orderBy('name', 'asc')->get();
 
         foreach ($sessions as $session) {
             $session->game_session_cover_picture = $this->resolveStoredImagePath($session->game_session_cover_picture);
@@ -48,7 +49,7 @@ class GameSessionController extends BaseController
             ->whereHas('players', function ($q) use ($userId) {
                 $q->where('user_id', $userId)->whereNull('left_at');
             })
-            ->with(['game', 'host', 'players.user'])
+            ->with(['game', 'host', 'players.user', 'detail', 'tags'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -164,6 +165,10 @@ class GameSessionController extends BaseController
             'game_id' => 'required|exists:games,id',
             'name' => 'required|string|min:2|max:80',
             'description' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:2000',
+            'max_players_cap' => 'nullable|integer|min:2|max:20',
+            'tag_ids' => 'nullable|array',
+            'tag_ids.*' => 'integer|exists:tags,id',
         ]);
 
         if ($validator->fails()) {
@@ -207,7 +212,18 @@ class GameSessionController extends BaseController
                     'is_ai' => false,
                 ]);
 
-                $session->load(['game', 'host', 'players']);
+                GameSessionDetail::create([
+                    'game_session_id' => $session->id,
+                    'notes' => $request->input('notes'),
+                    'max_players_cap' => $request->input('max_players_cap'),
+                ]);
+
+                if ($request->has('tag_ids') && is_array($request->input('tag_ids'))) {
+                    $tagIds = array_values(array_unique(array_map('intval', $request->input('tag_ids'))));
+                    $session->tags()->sync($tagIds);
+                }
+
+                $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
                 event(new GameSessionUpdated($session->id));
                 return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game Session created');
             });
@@ -221,7 +237,7 @@ class GameSessionController extends BaseController
 
     public function show($id)
     {
-        $session = GameSession::with(['game', 'host', 'players.user'])->find($id);
+        $session = GameSession::with(['game', 'host', 'players.user', 'detail', 'tags'])->find($id);
         if (!$session) {
             return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
         }
@@ -238,7 +254,7 @@ class GameSessionController extends BaseController
 
     public function update(Request $request, $id)
     {
-        $session = GameSession::find($id);
+        $session = GameSession::with(['detail', 'tags'])->find($id);
         if (!$session) {
             return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
         }
@@ -250,20 +266,59 @@ class GameSessionController extends BaseController
         }
 
         $validator = Validator::make($request->all(), [
-            'game_session_background_picture' => 'nullable|string|url',
+            'name' => 'sometimes|required|string|min:2|max:80',
+            'description' => 'nullable|string|max:500',
+            'game_id' => 'sometimes|required|exists:games,id',
+            'game_session_background_picture' => 'nullable|string|url|max:2048',
+            'notes' => 'nullable|string|max:2000',
+            'max_players_cap' => 'nullable|integer|min:2|max:20',
+            'tag_ids' => 'sometimes|array',
+            'tag_ids.*' => 'integer|exists:tags,id',
         ]);
 
         if ($validator->fails()) {
             return $this->sendError('Validation Error.', $validator->errors(), 422);
         }
 
+        if ($request->has('game_id')) {
+            if ($session->status !== 'waiting') {
+                return $this->sendError('Conflict.', ['error' => 'Cannot change game after the session has started'], 409);
+            }
+            $session->game_id = (int) $request->input('game_id');
+        }
+
+        if ($request->has('name')) {
+            $session->name = (string) $request->input('name');
+        }
+        if ($request->has('description')) {
+            $session->description = (string) $request->input('description');
+        }
         if ($request->has('game_session_background_picture')) {
             $session->game_session_background_picture = $request->input('game_session_background_picture');
         }
 
+        $detailInput = [];
+        if ($request->has('notes')) {
+            $detailInput['notes'] = $request->input('notes');
+        }
+        if ($request->has('max_players_cap')) {
+            $detailInput['max_players_cap'] = $request->input('max_players_cap');
+        }
+        if ($detailInput !== []) {
+            $session->detail()->updateOrCreate(
+                ['game_session_id' => $session->id],
+                $detailInput
+            );
+        }
+
+        if ($request->has('tag_ids')) {
+            $tagIds = array_values(array_unique(array_map('intval', $request->input('tag_ids', []))));
+            $session->tags()->sync($tagIds);
+        }
+
         $session->save();
 
-        $session->load(['game', 'host', 'players.user']);
+        $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
         return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Game session updated');
     }
 
@@ -309,7 +364,7 @@ class GameSessionController extends BaseController
                 ]);
             }
 
-            $session->load(['game', 'host', 'players.user']);
+            $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
             event(new GameSessionUpdated($session->id));
             return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Joined game session');
         });
@@ -362,7 +417,7 @@ class GameSessionController extends BaseController
                 ]);
             }
 
-            $session->load(['game', 'host', 'players.user']);
+            $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
             event(new GameSessionUpdated($session->id));
 
             return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Joined game session');
@@ -399,7 +454,8 @@ class GameSessionController extends BaseController
             return $this->sendError('Forbidden.', ['error' => 'Only the host can delete this session'], 403);
         }
 
-        $session->delete();
+        // Hard delete so FK cascades remove pivot rows, messages, and 1:1 detail (no orphan rows).
+        $session->forceDelete();
         event(new GameSessionUpdated((int) $id));
         return $this->sendResponse(['deleted' => true], 'Game session deleted successfully');
     }
@@ -463,7 +519,7 @@ class GameSessionController extends BaseController
         $session->version = (int) $session->version + 1;
         $session->save();
 
-        $session->load(['game', 'host', 'players.user']);
+        $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
         event(new GameSessionUpdated($session->id));
         return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Session started');
     }
@@ -550,7 +606,7 @@ class GameSessionController extends BaseController
             }
 
             $session->save();
-            $session->load(['game', 'host', 'players.user']);
+            $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
 
             // Old generic event (kept for other UI pieces)
             event(new GameSessionUpdated($session->id));
@@ -635,7 +691,7 @@ class GameSessionController extends BaseController
                 $session->save();
             }
 
-            $session->load(['game', 'host', 'players.user']);
+            $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
             event(new GameSessionUpdated($session->id));
 
             return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Chat preference updated');

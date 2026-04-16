@@ -37,6 +37,7 @@ class RegisterController extends BaseController
         $token = $user->createToken('MyApp');
         $success['token'] = $token->plainTextToken;
         $success['name'] = $user->name;
+        $success['id'] = $user->id;
 
         return $this->sendResponse($success, 'User register successfully.');
     }
@@ -52,6 +53,7 @@ class RegisterController extends BaseController
             $token = $user->createToken('MyApp');
             $success['token'] = $token->plainTextToken;
             $success['name'] = $user->name;
+            $success['id'] = $user->id;
             $success['avatar'] = null;
             if (isset($user->avatar)) {
                 $success['avatar'] = $this->getS3Url($user->avatar);
