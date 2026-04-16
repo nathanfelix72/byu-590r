@@ -31,8 +31,10 @@ start:
 	cd backend && docker compose exec -T app php artisan package:discover || true
 	@echo "Running database migrations and seeding..."
 	@$(MAKE) migrate
+	@echo "Creating storage link for public file access..."
+	@cd backend && docker compose exec -T app php artisan storage:link || true
 	@echo "Setting up demo book images for local storage..."
-	cd backend && docker compose exec -T app php artisan app:setup-demo-images
+	@cd backend && docker compose exec -T app php artisan app:setup-demo-images || true
 	@echo "Ensuring generated image storage path is writable..."
 	cd backend && docker compose exec -T app sh -lc 'mkdir -p /var/www/storage/app/public/generated-images && chmod 0777 /var/www/storage/app/public/generated-images'
 	@echo "Clearing all caches after migrations..."

@@ -12,8 +12,6 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatListModule } from '@angular/material/list';
 import { RealtimeService } from './core/services/realtime.service';
 
 @Component({
@@ -31,8 +29,6 @@ import { RealtimeService } from './core/services/realtime.service';
     MatDividerModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatSidenavModule,
-    MatListModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -45,10 +41,9 @@ export class AppComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private realtime = inject(RealtimeService);
 
-  theme = signal<'light' | 'dark'>('dark');
+  theme = signal<'light' | 'dark'>('light');
   profileDialog = signal(false);
   profileIsUploading = signal(false);
-  sidenavOpen = signal(true);
 
   profile = signal({
     name: '',
@@ -90,12 +85,12 @@ export class AppComponent implements OnInit {
     return userName ? `Welcome ${userName}!` : 'Welcome!';
   }
 
-  changeTheme(): void {
-    this.theme.set(this.theme() === 'light' ? 'dark' : 'light');
+  isGameSessionsRoute(): boolean {
+    return this.router.url.startsWith('/game-sessions');
   }
 
-  toggleSidenav(): void {
-    this.sidenavOpen.set(!this.sidenavOpen());
+  changeTheme(): void {
+    this.theme.set(this.theme() === 'light' ? 'dark' : 'light');
   }
 
   logout(): void {

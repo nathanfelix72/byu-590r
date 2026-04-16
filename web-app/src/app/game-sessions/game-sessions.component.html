@@ -3,38 +3,62 @@
     <div>
       <div class="page__title">Game sessions</div>
       <div class="page__subtitle">
-        Create a lobby, invite friends, and play asynchronously.
+        Keep momentum across your active games and quickly start the next one.
       </div>
+    </div>
+    <div class="headerActions">
+      <button class="btn btn--secondary" (click)="openJoin()">Join Session</button>
+      <button class="btn btn--primary" (click)="openCreate()">Create Session</button>
     </div>
   </header>
 
-  <mat-tab-group [selectedIndex]="getTabIndex()" (selectedIndexChange)="setTabIndex($event)">
-    <mat-tab label="In Progress">
-      <ng-template mat-tab-label>
-        <span class="tab-label">In Progress</span>
-      </ng-template>
+  <div class="tab-content">
+    @if (selectedTab() === 'in-progress') {
       <div class="card-grid">
         @if (inProgressSessions().length === 0) {
           <div class="empty-state">
-            <p>No games in progress. <a (click)="selectedTab.set('create')">Create one now!</a></p>
+            <p>No active games right now.</p>
+            <button class="btn btn--secondary" (click)="openCreate()">Create one now</button>
           </div>
         } @else {
           @for (session of inProgressSessions(); track session.id) {
-            <div class="sessionCard">
+            <div class="sessionCard" [class.sessionCard--waiting]="session.status === 'waiting'" [class.sessionCard--in-progress]="session.status === 'in_progress'">
               <a [routerLink]="['/game-sessions', session.id]" class="sessionCard__link">
-                <mat-card>
-                  <mat-card-content class="sessionCard__content">
+                <div class="sessionCard__surface">
+                  <div class="sessionCard__cover" [style.--cover-bg]="getCoverBgColor(session.id)">
+                    <img
+                      [src]="
+                        session.game_session_cover_picture
+                          ? session.game_session_cover_picture
+                          : defaultCoverImage
+                      "
+                      alt="Cover"
+                    />
+                  </div>
+                  <div class="sessionCard__content">
                     <div class="sessionCard__meta">
-                      <div class="sessionCard__title">{{ session.name }}</div>
+                      <div class="sessionCard__titleRow">
+                        <div class="sessionCard__title">{{ session.name }}</div>
+                        <span class="status-pill" [class]="statusClass(session.status)">
+                          <span class="status-icon">{{ statusIcon(session.status) }}</span>
+                          {{ formatStatus(session.status) }}
+                        </span>
+                      </div>
                       <div class="sessionCard__desc">{{ session.description }}</div>
                       <div class="sessionCard__createdBy">
-                        Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
+                        <span class="avatar-circle">
+                          @if (session.host?.avatar) {
+                            <img [src]="session.host?.avatar" alt="Host avatar" class="avatar-img" />
+                          } @else {
+                            <span class="avatar-icon">👤</span>
+                          }
+                        </span>
+                        <span>Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}</span>
                       </div>
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}
                       </div>
                       <div class="sessionCard__chips">
-                        <span class="chip chip--status">{{ formatStatus(session.status) }}</span>
                         @if (session.join_code) {
                           <span class="chip">Code: {{ session.join_code }}</span>
                         }
@@ -43,37 +67,23 @@
                         }
                       </div>
                     </div>
-                    <div class="sessionCard__cover">
-                      <img
-                        [src]="
-                          session.game_session_cover_picture
-                            ? session.game_session_cover_picture
-                            : defaultCoverImage
-                        "
-                        alt="Cover"
-                      />
-                    </div>
-                  </mat-card-content>
-                </mat-card>
+                  </div>
+                </div>
               </a>
               <button 
-                mat-icon-button 
                 class="sessionCard__delete"
                 (click)="deleteSession(session.id, session.name)"
-                matTooltip="Delete session"
+                title="Delete session"
               >
-                ✕
+                ×
               </button>
             </div>
           }
         }
       </div>
-    </mat-tab>
+    }
 
-    <mat-tab label="Finished">
-      <ng-template mat-tab-label>
-        <span class="tab-label">Finished</span>
-      </ng-template>
+    @if (selectedTab() === 'finished') {
       <div class="card-grid">
         @if (finishedSessions().length === 0) {
           <div class="empty-state">
@@ -81,21 +91,43 @@
           </div>
         } @else {
           @for (session of finishedSessions(); track session.id) {
-            <div class="sessionCard">
+            <div class="sessionCard sessionCard--finished">
               <a [routerLink]="['/game-sessions', session.id]" class="sessionCard__link">
-                <mat-card>
-                  <mat-card-content class="sessionCard__content">
+                <div class="sessionCard__surface">
+                  <div class="sessionCard__cover" [style.--cover-bg]="getCoverBgColor(session.id)">
+                    <img
+                      [src]="
+                        session.game_session_cover_picture
+                          ? session.game_session_cover_picture
+                          : defaultCoverImage
+                      "
+                      alt="Cover"
+                    />
+                  </div>
+                  <div class="sessionCard__content">
                     <div class="sessionCard__meta">
-                      <div class="sessionCard__title">{{ session.name }}</div>
+                      <div class="sessionCard__titleRow">
+                        <div class="sessionCard__title">{{ session.name }}</div>
+                        <span class="status-pill status-pill--finished">
+                          <span class="status-icon">{{ statusIcon(session.status) }}</span>
+                          {{ formatStatus(session.status) }}
+                        </span>
+                      </div>
                       <div class="sessionCard__desc">{{ session.description }}</div>
                       <div class="sessionCard__createdBy">
-                        Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
+                        <span class="avatar-circle">
+                          @if (session.host?.avatar) {
+                            <img [src]="session.host?.avatar" alt="Host avatar" class="avatar-img" />
+                          } @else {
+                            <span class="avatar-icon">👤</span>
+                          }
+                        </span>
+                        <span>Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}</span>
                       </div>
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}
                       </div>
                       <div class="sessionCard__chips">
-                        <span class="chip chip--status">{{ formatStatus(session.status) }}</span>
                         @if (session.join_code) {
                           <span class="chip">Code: {{ session.join_code }}</span>
                         }
@@ -104,75 +136,61 @@
                         }
                       </div>
                     </div>
-                    <div class="sessionCard__cover">
-                      <img
-                        [src]="
-                          session.game_session_cover_picture
-                            ? session.game_session_cover_picture
-                            : defaultCoverImage
-                        "
-                        alt="Cover"
-                      />
-                    </div>
-                  </mat-card-content>
-                </mat-card>
+                  </div>
+                </div>
               </a>
               <button 
-                mat-icon-button 
                 class="sessionCard__delete"
                 (click)="deleteSession(session.id, session.name)"
-                matTooltip="Delete session"
+                title="Delete session"
               >
-                ✕
+                ×
               </button>
             </div>
           }
         }
       </div>
-    </mat-tab>
+    }
 
-    <mat-tab label="Create/Join">
-      <ng-template mat-tab-label>
-        <span class="tab-label">Create/Join</span>
-      </ng-template>
+    @if (selectedTab() === 'create') {
       <div class="panel-container">
-        <div class="actions">
-          <button mat-stroked-button (click)="openJoin()">Join Session</button>
-          <button mat-flat-button color="primary" (click)="openCreate()">Create New Session</button>
+        <div class="actions actions--carded">
+          <button class="btn btn--secondary" (click)="openJoin()">Join Session</button>
+          <button class="btn btn--primary" (click)="openCreate()">Create New Session</button>
         </div>
 
         @if (createOpen()) {
-          <mat-card class="panel">
-            <mat-card-title>Create session</mat-card-title>
-            <mat-card-content>
+          <div class="panel card">
+            <div class="card__title">Create session</div>
+            <div class="card__content">
               <form [formGroup]="createForm" class="form">
-                <mat-form-field appearance="outline">
-                  <mat-label>Game</mat-label>
-                  <mat-select formControlName="game_id">
+                <div class="form-group">
+                  <label for="game-select">Game</label>
+                  <select id="game-select" formControlName="game_id" class="form-control">
+                    <option value="" disabled selected>Select a game</option>
                     @for (g of games(); track g.id) {
-                      <mat-option [value]="g.id">{{ g.name }}</mat-option>
+                      <option [value]="g.id">{{ g.name }}</option>
                     }
-                  </mat-select>
-                </mat-form-field>
+                  </select>
+                </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Name</mat-label>
-                  <input matInput formControlName="name" />
-                </mat-form-field>
+                <div class="form-group">
+                  <label for="session-name">Name</label>
+                  <input id="session-name" type="text" formControlName="name" class="form-control" />
+                </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Description</mat-label>
-                  <textarea matInput rows="3" formControlName="description"></textarea>
-                </mat-form-field>
+                <div class="form-group">
+                  <label for="session-desc">Description</label>
+                  <textarea id="session-desc" formControlName="description" class="form-control" rows="3"></textarea>
+                </div>
 
                 <div class="form__footer">
-                  <button mat-button type="button" (click)="createOpen.set(false)">
+                  <button type="button" class="btn btn--secondary" (click)="createOpen.set(false)">
                     Cancel
                   </button>
                   <button
-                    mat-flat-button
-                    color="primary"
                     type="button"
+                    class="btn btn--primary"
                     (click)="submitCreate()"
                     [disabled]="!createForm.valid || isGeneratingImage()"
                   >
@@ -184,28 +202,27 @@
                   </button>
                 </div>
               </form>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
         }
 
         @if (joinOpen()) {
-          <mat-card class="panel">
-            <mat-card-title>Join session</mat-card-title>
-            <mat-card-content>
+          <div class="panel card">
+            <div class="card__title">Join session</div>
+            <div class="card__content">
               <form [formGroup]="joinForm" class="form">
-                <mat-form-field appearance="outline">
-                  <mat-label>Join Code</mat-label>
-                  <input matInput formControlName="join_code" />
-                </mat-form-field>
+                <div class="form-group">
+                  <label for="join-code">Join Code</label>
+                  <input id="join-code" type="text" formControlName="join_code" class="form-control" />
+                </div>
 
                 <div class="form__footer">
-                  <button mat-button type="button" (click)="joinOpen.set(false)">
+                  <button type="button" class="btn btn--secondary" (click)="joinOpen.set(false)">
                     Cancel
                   </button>
                   <button
-                    mat-flat-button
-                    color="primary"
                     type="button"
+                    class="btn btn--primary"
                     (click)="submitJoin()"
                     [disabled]="!joinForm.valid"
                   >
@@ -213,11 +230,11 @@
                   </button>
                 </div>
               </form>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
         }
       </div>
-    </mat-tab>
-  </mat-tab-group>
+    }
+  </div>
 </section>
 

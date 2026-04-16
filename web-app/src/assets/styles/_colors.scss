@@ -1,34 +1,42 @@
-// Primary colors - Accessible blue palette
-$colors-primary: #1976d2;
-$colors-primary-dark: #1565c0;
-$colors-primary-light: #42a5f5;
+// Earthy primary palette
+$colors-primary: #1f5a3d;
+$colors-primary-dark: #17442f;
+$colors-primary-light: #2f7a56;
 
-// Secondary colors
-$colors-secondary: #424242;
-$colors-accent: #ff6f00;
+// Accent palette
+$colors-secondary: #2b3a31;
+$colors-accent: #c89a3d;
 
-// Neutral colors - High contrast for accessibility
+// Neutral colors - light theme
 $colors-white: #ffffff;
-$colors-off-white: #fafafa;
-$colors-light-grey: #e0e0e0;
-$colors-medium-grey: #9e9e9e;
-$colors-dark-grey: #616161;
-$colors-charcoal: #212121;
+$colors-off-white: #f4f3ef;
+$colors-light-grey: #d8d5cc;
+$colors-medium-grey: #9a9487;
+$colors-dark-grey: #57554e;
+$colors-charcoal: #1d1f1d;
 $colors-black: #000000;
 
 // Semantic colors
-$colors-success: #2e7d32;
-$colors-warning: #f57c00;
-$colors-error: #d32f2f;
-$colors-info: #0288d1;
+$colors-success: #2f7a56;
+$colors-warning: #b8802a;
+$colors-error: #b64535;
+$colors-info: #2f6a70;
 
-// Background and text - High contrast combinations
-$colors-background: $colors-off-white;
-$colors-surface: $colors-white;
-$colors-text-primary: $colors-charcoal;
-$colors-text-secondary: $colors-dark-grey;
-$colors-border: $colors-light-grey;
-$colors-divider: $colors-light-grey;
+// Background and text
+$colors-background: #eeece4;
+$colors-surface: #fbfaf7;
+$colors-text-primary: #1f221f;
+$colors-text-secondary: #4e534d;
+$colors-border: #d4d2c8;
+$colors-divider: #dddacf;
+
+// Dark theme reference values (used via CSS custom properties)
+$colors-dark-background: #222521;
+$colors-dark-surface: #2b2f2a;
+$colors-dark-surface-raised: #333832;
+$colors-dark-text-primary: #f5f3ec;
+$colors-dark-text-secondary: #cac5b8;
+$colors-dark-border: #42463f;
 
 // Legacy support (mapped to new colors for backward compatibility)
 $colors-ui-white: $colors-white;

@@ -3,7 +3,6 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthStore } from '../core/stores/auth.store';
 import { UserStore } from '../core/stores/user.store';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -20,7 +19,6 @@ type SortKey = 'name' | 'status' | 'players';
   imports: [
     CommonModule,
     RouterModule,
-    MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
@@ -55,10 +53,46 @@ export class HomeComponent {
   });
 
   stats = computed(() => {
-    const p = this.userStore.user()?.profile;
+    const user = this.userStore.user();
+    const uid = user?.id;
+    const sessions = this.sessions();
+
+    if (uid === undefined || uid === null) {
+      const p = user?.profile;
+      return {
+        wins: p?.wins ?? 0,
+        losses: p?.losses ?? 0,
+      };
+    }
+
+    let wins = 0;
+    let losses = 0;
+
+    for (const s of sessions) {
+      if (s.status !== 'finished') continue;
+      const winnerId = this.getWinnerUserId(s);
+      if (winnerId === null) continue;
+      if (!this.didUserParticipate(s, uid)) continue;
+
+      if (winnerId === Number(uid)) {
+        wins += 1;
+      } else {
+        losses += 1;
+      }
+    }
+
+    // Prefer computed values from sessions; if none are available yet, use profile fallback.
+    if (wins === 0 && losses === 0) {
+      const p = user?.profile;
+      return {
+        wins: p?.wins ?? 0,
+        losses: p?.losses ?? 0,
+      };
+    }
+
     return {
-      wins: p?.wins ?? 0,
-      losses: p?.losses ?? 0,
+      wins,
+      losses,
     };
   });
 
@@ -104,12 +138,8 @@ export class HomeComponent {
   }
 
   getWinner(s: GameSession): string {
-    if (s.status !== 'finished' || !s.state) {
-      return '';
-    }
-    const state = typeof s.state === 'string' ? JSON.parse(s.state) : s.state;
-    const winnerId = state?.winnerUserId;
-    if (winnerId === null || winnerId === undefined) {
+    const winnerId = this.getWinnerUserId(s);
+    if (winnerId === null) {
       return '';
     }
     const winner = this.activePlayers(s).find((p) => Number(p.user_id) === Number(winnerId));
@@ -131,6 +161,27 @@ export class HomeComponent {
     if (uid === undefined || uid === null) return 0;
     const row = this.activePlayers(s).find((p) => Number(p.user_id) === Number(uid));
     return row?.score ?? 0;
+  }
+
+  private getWinnerUserId(s: GameSession): number | null {
+    if (s.status !== 'finished' || !s.state) {
+      return null;
+    }
+
+    try {
+      const state = typeof s.state === 'string' ? JSON.parse(s.state) : s.state;
+      const winnerId = state?.winnerUserId;
+      if (winnerId === null || winnerId === undefined) {
+        return null;
+      }
+      return Number(winnerId);
+    } catch {
+      return null;
+    }
+  }
+
+  private didUserParticipate(s: GameSession, uid: number): boolean {
+    return (s.players || []).some((p) => Number(p.user_id) === Number(uid));
   }
 
   private sessionMatchesQuery(s: GameSession, q: string): boolean {

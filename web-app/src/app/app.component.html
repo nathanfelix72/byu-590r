@@ -4,80 +4,92 @@
   [class.theme-light]="theme() === 'light'"
 >
   @if (isAuthenticated) {
-    <mat-toolbar color="primary" class="app-bar">
-      <button mat-icon-button (click)="toggleSidenav()" class="app-bar__menu">
-        <mat-icon>menu</mat-icon>
-      </button>
-
-      <div class="app-bar__brand" routerLink="/home" tabindex="0" role="link">
-        <span class="app-bar__brandTitle">Boardroom</span>
-        <span class="app-bar__brandTag">turn-based games</span>
-      </div>
-
-      <span class="app-bar-spacer"></span>
-
-      <button
-        mat-icon-button
-        [matMenuTriggerFor]="profileMenu"
-        class="avatar-button"
-      >
-        @if (avatarURL) {
-          <img [src]="avatarURL" alt="Avatar" class="avatar-image" />
-        } @else {
-          <mat-icon>account_circle</mat-icon>
-        }
-      </button>
-
-      <mat-menu #profileMenu="matMenu">
-        <div class="profile-menu-header">
-          <h3>{{ profile().name }}</h3>
+    <mat-toolbar class="app-bar">
+      <div class="app-shellTop">
+        <div class="app-bar__brand" routerLink="/home" tabindex="0" role="link">
+          <span class="app-bar__brandTitle">Boardroom</span>
+          <span class="app-bar__brandTag">turn-based games</span>
         </div>
-        <mat-divider></mat-divider>
-        <button mat-menu-item (click)="changeTheme()">
-          <mat-icon>{{ theme() === "light" ? "dark_mode" : "light_mode" }}</mat-icon>
-          <span>Toggle Theme</span>
-        </button>
-        <button mat-menu-item (click)="openProfileDialog()">
-          <mat-icon>person</mat-icon>
-          <span>Profile</span>
-        </button>
-        <mat-divider></mat-divider>
-        <button mat-menu-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
-        </button>
-      </mat-menu>
-    </mat-toolbar>
 
-    <mat-sidenav-container class="layout">
-      <mat-sidenav
-        class="layout__sidenav"
-        [mode]="'side'"
-        [opened]="sidenavOpen()"
-      >
-        <nav class="nav">
-          <a mat-list-item routerLink="/home" routerLinkActive="nav__active">
-            <mat-icon class="nav__icon">dashboard</mat-icon>
+        <nav class="primary-nav" aria-label="Primary">
+          <a routerLink="/home" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
+            <mat-icon>dashboard</mat-icon>
             <span>Dashboard</span>
           </a>
-          <a
-            mat-list-item
-            routerLink="/game-sessions"
-            routerLinkActive="nav__active"
-            [routerLinkActiveOptions]="{ exact: false }"
-          >
-            <mat-icon class="nav__icon">sports_esports</mat-icon>
+          <a routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
+            <mat-icon>sports_esports</mat-icon>
             <span>Game Sessions</span>
           </a>
         </nav>
-      </mat-sidenav>
 
-      <mat-sidenav-content class="layout__content">
-        <main class="app-main">
-          <router-outlet></router-outlet>
-        </main>
-      </mat-sidenav-content>
-    </mat-sidenav-container>
+        <div class="app-shellTop__actions">
+          <button mat-icon-button (click)="changeTheme()" class="toolbar-icon" aria-label="Toggle theme">
+            <mat-icon>{{ theme() === "light" ? "dark_mode" : "light_mode" }}</mat-icon>
+          </button>
+
+          <button
+            mat-icon-button
+            [matMenuTriggerFor]="profileMenu"
+            class="avatar-button"
+            aria-label="Profile menu"
+          >
+            @if (avatarURL) {
+              <img [src]="avatarURL" alt="Avatar" class="avatar-image" />
+            } @else {
+              <mat-icon>account_circle</mat-icon>
+            }
+          </button>
+        </div>
+      </div>
+
+      @if (isGameSessionsRoute()) {
+        <nav class="secondary-nav" aria-label="Session categories">
+          <a
+            routerLink="/game-sessions"
+            [queryParams]="{ tab: 'in-progress' }"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
+          >
+            Active
+          </a>
+          <a
+            routerLink="/game-sessions"
+            [queryParams]="{ tab: 'finished' }"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
+          >
+            Completed
+          </a>
+          <a
+            routerLink="/game-sessions"
+            [queryParams]="{ tab: 'create' }"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
+          >
+            Create/Join
+          </a>
+        </nav>
+      }
+    </mat-toolbar>
+
+    <mat-menu #profileMenu="matMenu">
+      <div class="profile-menu-header">
+        <h3>{{ profile().name }}</h3>
+      </div>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="openProfileDialog()">
+        <mat-icon>person</mat-icon>
+        <span>Profile</span>
+      </button>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+
+    <main class="app-main">
+      <router-outlet></router-outlet>
+    </main>
   } @else {
     <main class="app-main app-main--full-bleed">
       <router-outlet></router-outlet>

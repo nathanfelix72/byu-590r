@@ -14,10 +14,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { map } from 'rxjs/operators';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
@@ -39,10 +37,8 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
     CommonModule,
     FormsModule,
     RouterModule,
-    MatCardModule,
     MatButtonModule,
     MatSnackBarModule,
-    MatListModule,
     MatFormFieldModule,
     MatInputModule,
     UnoCardComponent,

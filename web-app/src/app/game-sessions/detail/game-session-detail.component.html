@@ -26,19 +26,19 @@
 
     <div class="grid">
       @if (session()!.status === 'waiting') {
-        <mat-card>
-          <mat-card-title>Lobby</mat-card-title>
-          <mat-card-content>
+        <div class="card">
+          <div class="card__title">Lobby</div>
+          <div class="card__content">
             <p class="muted">{{ session()!.description }}</p>
             <div class="row">
-              <button mat-stroked-button (click)="toggleReady()">I’m ready</button>
+              <button mat-stroked-button (click)="toggleReady()">I'm ready</button>
             </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
+        </div>
       } @else {
-        <mat-card class="chatCard">
-          <mat-card-title>Chat</mat-card-title>
-          <mat-card-content>
+        <div class="card chatCard">
+          <div class="card__title">Chat</div>
+          <div class="card__content">
             <div class="chatLog">
               @for (m of chatMessages(); track m.id) {
                 <div class="chatLine" [class.chatLine--mine]="m.user_id === myUserId">
@@ -61,16 +61,16 @@
               </mat-form-field>
               <button mat-flat-button color="primary" type="button" (click)="sendChat()">Send</button>
             </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
+        </div>
       }
 
-      <mat-card>
-        <mat-card-title>Players</mat-card-title>
-        <mat-card-content>
-          <mat-list>
+      <div class="card">
+        <div class="card__title">Players</div>
+        <div class="card__content">
+          <div class="player-list">
             @for (p of activeLobbyPlayers(); track p.id) {
-              <mat-list-item>
+              <div class="player-item">
                 <span class="player">
                   <span class="player__name">{{ p.user?.name || ('Player ' + p.user_id) }}</span>
                   <span class="player__meta">{{ cardCountLabelForUser(p.user_id) }}</span>
@@ -78,11 +78,11 @@
                     <span class="ready">ready</span>
                   }
                 </span>
-              </mat-list-item>
+              </div>
             }
-          </mat-list>
-        </mat-card-content>
-      </mat-card>
+          </div>
+        </div>
+      </div>
     </div>
 
     @if (session()!.status === 'in_progress' && unoState) {
@@ -194,8 +194,8 @@
       </div>
     }
   } @else {
-    <mat-card>
-      <mat-card-content>Loading…</mat-card-content>
-    </mat-card>
+    <div class="card">
+      <div class="card__content">Loading…</div>
+    </div>
   }
 </section>

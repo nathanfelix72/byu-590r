@@ -1,19 +1,12 @@
 import { Component, OnInit, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { GameSessionStore } from '../core/stores/game-session.store';
 import { GameSessionService } from '../core/services/game-session.service';
 import { GamesService, Game } from '../core/services/games.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatTabsModule } from '@angular/material/tabs';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -23,14 +16,6 @@ import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatSnackBarModule,
-    MatTooltipModule,
-    MatTabsModule,
   ],
   templateUrl: './game-sessions.component.html',
   styleUrl: './game-sessions.component.scss',
@@ -42,6 +27,8 @@ export class GameSessionsComponent implements OnInit {
   private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   gameSessions = computed(() => this.gameSessionStore.sessions());
   games = signal<Game[]>([]);
@@ -73,6 +60,11 @@ export class GameSessionsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.applyTabFromParam(this.route.snapshot.queryParamMap.get('tab'));
+    this.route.queryParamMap.subscribe((params) => {
+      this.applyTabFromParam(params.get('tab'));
+    });
+
     this.loadGames();
     this.loadMyGameSessions();
   }
@@ -96,11 +88,15 @@ export class GameSessionsComponent implements OnInit {
   }
 
   openCreate(): void {
+    this.selectedTab.set('create');
+    this.updateTabQuery('create');
     this.createOpen.set(true);
     this.joinOpen.set(false);
   }
 
   openJoin(): void {
+    this.selectedTab.set('create');
+    this.updateTabQuery('create');
     this.joinOpen.set(true);
     this.createOpen.set(false);
   }
@@ -206,6 +202,35 @@ export class GameSessionsComponent implements OnInit {
       .join(' ');
   }
 
+  statusClass(status: string): string {
+    if (status === 'in_progress') return 'status-pill--in-progress';
+    if (status === 'finished') return 'status-pill--finished';
+    return 'status-pill--waiting';
+  }
+
+  statusIcon(status: string): string {
+    if (status === 'in_progress') return '▶';
+    if (status === 'finished') return '✓';
+    return '⏳';
+  }
+
+  getCoverBgColor(sessionId: number): string {
+    // Generate a consistent, randomized color based on session ID
+    const colors = [
+      '#c89a3d', // amber
+      '#1f5a3d', // forest green
+      '#5ca27c', // sage green
+      '#d8ae5d', // light gold
+      '#4a6a5f', // muted teal
+      '#8b6f47', // taupe
+      '#d9534f', // coral
+      '#7a9fb1', // dusty blue
+      '#9b7b6f', // mauve
+      '#6b7f6f', // sage
+    ];
+    return colors[sessionId % colors.length];
+  }
+
   getTabIndex(): number {
     const tab = this.selectedTab();
     return tab === 'in-progress' ? 0 : tab === 'finished' ? 1 : 2;
@@ -214,10 +239,28 @@ export class GameSessionsComponent implements OnInit {
   setTabIndex(index: number): void {
     if (index === 0) {
       this.selectedTab.set('in-progress');
+      this.updateTabQuery('in-progress');
     } else if (index === 1) {
       this.selectedTab.set('finished');
+      this.updateTabQuery('finished');
     } else {
       this.selectedTab.set('create');
+      this.updateTabQuery('create');
+    }
+  }
+
+  private updateTabQuery(tab: 'in-progress' | 'finished' | 'create'): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private applyTabFromParam(tab: string | null): void {
+    if (tab === 'in-progress' || tab === 'finished' || tab === 'create') {
+      this.selectedTab.set(tab);
     }
   }
 }

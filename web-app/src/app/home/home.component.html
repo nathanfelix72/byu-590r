@@ -3,78 +3,92 @@
     <div>
       <div class="page__title">Dashboard</div>
       <div class="page__subtitle">
-        Jump back into games, track your stats, and keep everything centered on the board-game flow.
+        Jump back into active tables, review your track record, and get to your next move quickly.
       </div>
     </div>
     <div class="home__actions">
-      <button mat-stroked-button routerLink="/game-sessions">Browse sessions</button>
+      <button mat-stroked-button routerLink="/game-sessions" [queryParams]="{ tab: 'in-progress' }">Continue sessions</button>
+      <button mat-flat-button color="primary" routerLink="/game-sessions" [queryParams]="{ tab: 'create' }">Create or join</button>
     </div>
   </header>
 
-  <div class="home__grid">
-    <mat-card>
-      <mat-card-title>Your stats</mat-card-title>
-      <mat-card-content class="stats">
-        <div class="stat">
-          <div class="stat__label">Wins</div>
-          <div class="stat__value">{{ stats().wins }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__label">Losses</div>
-          <div class="stat__value">{{ stats().losses }}</div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+  <div class="statsStrip" aria-label="Quick stats">
+    <div class="statCard statCard--wins card">
+      <div class="card__content">
+        <div class="statCard__label">Wins</div>
+        <div class="statCard__value">{{ stats().wins }}</div>
+      </div>
+    </div>
 
-    <mat-card class="gamesCard">
-      <mat-card-title>Games</mat-card-title>
-      <mat-card-content>
-        <div class="gamesToolbar">
-          <mat-form-field appearance="outline" class="gamesToolbar__search" subscriptSizing="dynamic">
-            <mat-label>Search</mat-label>
-            <input matInput [value]="search()" (input)="onSearchInput($event)" placeholder="Name, status, players, score" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="gamesToolbar__sort" subscriptSizing="dynamic">
-            <mat-label>Sort by</mat-label>
-            <mat-select [value]="sortKey()" (selectionChange)="setSortKey($event.value)">
-              <mat-option value="name">Name</mat-option>
-              <mat-option value="status">Status</mat-option>
-              <mat-option value="players">Players</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <button mat-stroked-button type="button" (click)="toggleSortDir()">
-            {{ sortDir() === 1 ? 'Asc' : 'Desc' }}
-          </button>
-        </div>
+    <div class="statCard statCard--losses card">
+      <div class="card__content">
+        <div class="statCard__label">Losses</div>
+        <div class="statCard__value">{{ stats().losses }}</div>
+      </div>
+    </div>
 
-        @if (filteredGames().length === 0) {
-          <p class="muted">No matching games. Create or join one to get started.</p>
-          <button mat-stroked-button routerLink="/game-sessions">Create / Join</button>
-        } @else {
-          <div class="gamesTable" role="table">
-            <div class="gamesTable__row gamesTable__row--head" role="row">
-              <span role="columnheader">Game</span>
-              <span role="columnheader">Players</span>
-              <span role="columnheader">Status</span>
-            </div>
-            @for (s of filteredGames(); track s.id) {
-              <a class="gamesTable__row gamesTable__row--body" role="row" [routerLink]="['/game-sessions', s.id]">
-                <span class="gamesTable__cell gamesTable__cell--name" role="cell">
-                  <strong>{{ s.name }}</strong>
-                </span>
-                <span class="gamesTable__cell gamesTable__cell--players" role="cell">{{ playerLine(s) }}</span>
-                <span role="cell">
-                  @if (getWinner(s)) {
-                    <span class="statusPill">{{ getWinner(s) }}</span>
-                  } @else {
-                    <span class="statusPill">{{ formatStatus(s.status) }}</span>
-                  }
-                </span>
-              </a>
-            }
+    <div class="statCard statCard--sessions card">
+      <div class="card__content">
+        <div class="statCard__label">Visible Sessions</div>
+        <div class="statCard__value">{{ filteredGames().length }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gamesCard card">
+    <div class="card__title">Current game sessions</div>
+    <div class="card__content">
+      <div class="gamesToolbar">
+        <mat-form-field appearance="outline" class="gamesToolbar__search" subscriptSizing="dynamic">
+          <mat-label>Search sessions</mat-label>
+          <input matInput [value]="search()" (input)="onSearchInput($event)" placeholder="Name, status, players, score" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="gamesToolbar__sort" subscriptSizing="dynamic">
+          <mat-label>Sort by</mat-label>
+          <mat-select [value]="sortKey()" (selectionChange)="setSortKey($event.value)">
+            <mat-option value="name">Name</mat-option>
+            <mat-option value="status">Status</mat-option>
+            <mat-option value="players">Players</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button type="button" (click)="toggleSortDir()" class="gamesToolbar__direction">
+          {{ sortDir() === 1 ? 'Ascending' : 'Descending' }}
+        </button>
+      </div>
+
+      @if (filteredGames().length === 0) {
+        <div class="emptyState">
+          <p>No matching sessions right now.</p>
+          <button mat-stroked-button routerLink="/game-sessions" [queryParams]="{ tab: 'create' }">Create or join a session</button>
+        </div>
+      } @else {
+        <div class="gamesTable" role="table" aria-label="Game sessions">
+          <div class="gamesTable__row gamesTable__row--head" role="row">
+            <span role="columnheader">Game</span>
+            <span role="columnheader">Players</span>
+            <span role="columnheader">Status</span>
+            <span role="columnheader">Open</span>
           </div>
-        }
-      </mat-card-content>
-    </mat-card>
+          @for (s of filteredGames(); track s.id) {
+            <a class="gamesTable__row gamesTable__row--body" role="row" [routerLink]="['/game-sessions', s.id]">
+              <span class="gamesTable__cell gamesTable__cell--name" role="cell">
+                <strong>{{ s.name }}</strong>
+              </span>
+              <span class="gamesTable__cell gamesTable__cell--players" role="cell">{{ playerLine(s) }}</span>
+              <span role="cell">
+                @if (getWinner(s)) {
+                  <span class="status-pill status-pill--finished">{{ getWinner(s) }}</span>
+                } @else {
+                  <span class="status-pill" [class.status-pill--waiting]="s.status === 'waiting'" [class.status-pill--in-progress]="s.status === 'in_progress'" [class.status-pill--finished]="s.status === 'finished'">
+                    {{ formatStatus(s.status) }}
+                  </span>
+                }
+              </span>
+              <span class="gamesTable__open" role="cell">View</span>
+            </a>
+          }
+        </div>
+      }
+    </div>
   </div>
 </section>
