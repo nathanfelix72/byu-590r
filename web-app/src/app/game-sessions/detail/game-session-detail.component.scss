@@ -142,6 +142,39 @@
   box-shadow: none !important;
 }
 
+.chatCard .card__titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chatMuteBtn {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-elevated-2);
+  }
+}
+
+.chatMutedHint {
+  margin: 0;
+  flex: 1;
+  min-height: 140px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-muted);
+}
+
 .chatCard .card__content {
   display: flex;
   flex-direction: column;
@@ -157,7 +190,7 @@
   padding: 12px 8px;
   border-radius: 12px;
   border: 1px solid var(--border-muted);
-  background: color-mix(in srgb, var(--surface-elevated-2) 84%, var(--brand-primary) 16%);
+  background: var(--surface-elevated);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -168,24 +201,24 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 14px;
-  background: color-mix(in srgb, var(--surface-elevated) 86%, var(--brand-primary) 14%);
+  background: var(--surface-elevated-2);
   border-radius: 10px;
-  border-left: 3px solid color-mix(in srgb, var(--brand-primary) 50%, transparent);
+  border-left: 3px solid var(--border-muted);
   align-self: flex-start;
   max-width: 75%;
 }
 
 .chatLine--mine {
-  background: color-mix(in srgb, var(--brand-accent) 22%, var(--surface-elevated) 78%);
+  background: color-mix(in srgb, var(--surface-elevated-2) 82%, var(--brand-accent) 18%);
   border-left: none;
-  border-right: 3px solid color-mix(in srgb, var(--brand-accent) 60%, transparent);
+  border-right: 3px solid color-mix(in srgb, var(--brand-accent) 45%, var(--border-muted) 55%);
   align-self: flex-end;
 }
 
 .chatLine__who {
   font-weight: 700;
   font-size: 13px;
-  color: var(--brand-primary-strong);
+  color: var(--text-primary);
   text-transform: capitalize;
   text-align: left;
 }
@@ -206,6 +239,11 @@
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.chatComposer__mute {
+  flex-shrink: 0;
 }
 
 .chatComposer__field {
@@ -264,21 +302,66 @@
   overflow: hidden;
 }
 
-.unoTable__felt--with-image {
-  background-blend-mode: overlay;
-  background-color: rgba(0, 0, 0, 0.3);
-}
-
+/* Felt grit: avoid mix-blend (forces expensive recomposites when the table updates). */
 .unoTable__felt::after {
   content: '';
   position: absolute;
   inset: 0;
-  opacity: 0.18;
+  z-index: 1;
+  opacity: 0.12;
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.5) 1px, transparent 0);
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.45) 1px, transparent 0);
   background-size: 6px 6px;
   pointer-events: none;
-  mix-blend-mode: overlay;
+}
+
+/* Doesn’t block clicks on cards or deck (pointer-events: none). */
+.yourTurnToast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 20px 12px;
+  border-radius: 14px;
+  background: rgba(255, 215, 0, 0.96);
+  color: #1a1a1a;
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(255, 255, 255, 0.45);
+  animation: yourTurnToastIn 0.4s ease-out;
+  text-align: center;
+  max-width: min(92%, 360px);
+}
+
+@keyframes yourTurnToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.yourTurnToast__title {
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.yourTurnToast__hint {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.88;
 }
 
 .opponents {
@@ -291,13 +374,17 @@
 }
 
 .opponent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   padding: 12px 14px;
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.22);
+  /* Solid panel (no backdrop-filter): blur repaints a large region when the felt/cards update. */
+  background: rgba(0, 0, 0, 0.38);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.92);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(6px);
 }
 
 .opponent--active {
@@ -309,29 +396,38 @@
 }
 
 .opponent__name {
+  width: 100%;
   font-weight: 800;
   letter-spacing: 0.2px;
+  text-align: center;
 }
 
 .opponent__count {
+  width: 100%;
   margin-top: 4px;
   opacity: 0.88;
   font-size: 12px;
+  text-align: center;
 }
 
 .opponent__hand {
+  width: 100%;
   margin-top: 6px;
 }
 
 .opponentHand__rail {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: flex-end;
   flex-wrap: nowrap;
   gap: 0;
   padding: 10px 0 6px;
   overflow: visible;
   max-width: 100%;
+}
+
+.opponentHand__rail--compressed {
+  justify-content: flex-start;
 }
 
 .opponentHand__rail app-uno-card:not(:first-child) {
@@ -374,34 +470,75 @@
   justify-content: center;
 }
 
-.winnerBanner {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 191, 0, 0.25);
-  background: rgba(255, 191, 0, 0.10);
+.gameOverBanner {
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 191, 0, 0.35);
+  background: rgba(255, 191, 0, 0.12);
   text-align: center;
-  font-weight: 900;
-  letter-spacing: 0.2px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.chatClosedHint {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.wildPickerBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.58);
+  border-radius: inherit;
 }
 
 .wildPicker {
-  position: absolute;
-  top: 22px;
-  right: 22px;
-  z-index: 10;
-  width: 260px;
+  position: relative;
+  width: min(300px, 100%);
   border-radius: 18px;
-  padding: 14px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(10px);
+  padding: 20px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(22, 22, 28, 0.97);
+  box-shadow: 0 28px 56px rgba(0, 0, 0, 0.55);
+}
+
+.wildPicker__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .wildPicker__title {
+  flex: 1;
   font-weight: 900;
-  margin-bottom: 10px;
-  opacity: 0.95;
+  margin: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.wildPicker__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.wildPicker__close:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .wildPicker__buttons {
@@ -446,19 +583,6 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-.turnDirection {
-  color: rgba(255, 255, 255, 1);
-  font-size: 12px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 12px;
-  border-radius: 6px;
-  display: inline-block;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
 .drawBtn {
   background: rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.92);
@@ -495,13 +619,17 @@
 
 .myHand__rail {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: flex-end;
   flex-wrap: nowrap;
   padding: 4px 8px 8px;
   min-height: 120px;
   gap: 0;
   overflow: visible;
+}
+
+.myHand__rail--compressed {
+  justify-content: flex-start;
 }
 
 .myHand__rail .fanCard:not(:first-child) {

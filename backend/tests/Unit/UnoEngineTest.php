@@ -13,21 +13,20 @@ class UnoEngineTest extends TestCase
         $state = $engine->initState([1, 2, 3]);
 
         $this->assertSame('uno', $state['type']);
+        $this->assertNull($state['pendingUnoUserId'] ?? null);
         $this->assertCount(3, $state['players']);
         foreach ($state['players'] as $p) {
             $this->assertCount(7, $p['hand']);
         }
     }
 
-    public function test_wild_draw4_illegal_when_color_match_exists_if_rule_enabled(): void
+    public function test_wild_draw4_allowed_even_with_matching_color_in_hand(): void
     {
         $engine = new UnoEngine();
 
         $state = [
             'type' => 'uno',
-            'rules' => [
-                'allowWildDraw4OnlyIfNoMatch' => true,
-            ],
+            'rules' => [],
             'players' => [
                 [
                     'user_id' => 1,
@@ -52,11 +51,13 @@ class UnoEngineTest extends TestCase
             'moveHistory' => [],
         ];
 
-        $this->expectExceptionMessage('Wild Draw 4 is only allowed');
-        $engine->applyMove($state, 1, [
+        $next = $engine->applyMove($state, 1, [
             'type' => 'play_card',
             'payload' => ['cardIndex' => 1, 'chosenColor' => 'g'],
         ]);
+
+        $this->assertSame('g', $next['currentColor']);
+        $this->assertSame(4, (int) $next['pendingDraw']);
     }
 
     public function test_draw2_advances_to_victim_with_pending_draw_not_past_them(): void
@@ -119,6 +120,212 @@ class UnoEngineTest extends TestCase
         $this->assertFalse($m->invoke($engine, $state, ['color' => 'g', 'value' => '0']));
         $stateZeroTop = ['currentColor' => 'b', 'currentValue' => '0'];
         $this->assertTrue($m->invoke($engine, $stateZeroTop, ['color' => 'g', 'value' => '0']));
+    }
+
+    public function test_pending_uno_set_when_playing_down_to_one_card(): void
+    {
+        $engine = new UnoEngine();
+
+        $state = [
+            'type' => 'uno',
+            'rules' => [],
+            'players' => [
+                [
+                    'user_id' => 1,
+                    'hand' => [
+                        ['color' => 'r', 'value' => '3'],
+                        ['color' => 'r', 'value' => '5'],
+                    ],
+                ],
+                [
+                    'user_id' => 2,
+                    'hand' => [['color' => 'g', 'value' => '2']],
+                ],
+            ],
+            'deck' => array_fill(0, 20, ['color' => 'y', 'value' => '1']),
+            'discard' => [['color' => 'r', 'value' => '7']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '7',
+            'pendingDraw' => 0,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $next = $engine->applyMove($state, 1, [
+            'type' => 'play_card',
+            'payload' => ['cardIndex' => 0],
+        ]);
+
+        $this->assertSame(1, (int) $next['pendingUnoUserId']);
+        $this->assertCount(1, $next['players'][0]['hand']);
+    }
+
+    public function test_uno_chat_penalty_when_opponent_says_uno_first(): void
+    {
+        $engine = new UnoEngine();
+
+        $state = [
+            'type' => 'uno',
+            'rules' => [],
+            'players' => [
+                [
+                    'user_id' => 1,
+                    'hand' => [
+                        ['color' => 'r', 'value' => '8'],
+                    ],
+                ],
+                [
+                    'user_id' => 2,
+                    'hand' => [['color' => 'g', 'value' => '2']],
+                ],
+            ],
+            'deck' => array_fill(0, 10, ['color' => 'y', 'value' => '1']),
+            'discard' => [['color' => 'r', 'value' => '5']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '5',
+            'pendingDraw' => 0,
+            'pendingUnoUserId' => 1,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $res = $engine->applyUnoChatResolution($state, 2, 'uno', true);
+
+        $this->assertSame('penalty', $res['effect']);
+        $this->assertSame(1, (int) $res['victimUserId']);
+        $this->assertSame(2, (int) $res['catcherUserId']);
+        $this->assertCount(3, $res['state']['players'][0]['hand']);
+        $this->assertArrayNotHasKey('pendingUnoUserId', $res['state']);
+    }
+
+    public function test_body_looks_like_uno_call_accepts_common_variants(): void
+    {
+        $engine = new UnoEngine();
+        $this->assertTrue($engine->bodyLooksLikeUnoCall('uno'));
+        $this->assertTrue($engine->bodyLooksLikeUnoCall('Uno'));
+        $this->assertTrue($engine->bodyLooksLikeUnoCall('  UNO  '));
+        $this->assertTrue($engine->bodyLooksLikeUnoCall('uno!'));
+        $this->assertFalse($engine->bodyLooksLikeUnoCall('I said uno'));
+        $this->assertFalse($engine->bodyLooksLikeUnoCall(''));
+    }
+
+    public function test_uno_chat_cleared_when_victim_says_uno(): void
+    {
+        $engine = new UnoEngine();
+
+        $state = [
+            'type' => 'uno',
+            'rules' => [],
+            'players' => [
+                [
+                    'user_id' => 1,
+                    'hand' => [
+                        ['color' => 'r', 'value' => '8'],
+                    ],
+                ],
+                [
+                    'user_id' => 2,
+                    'hand' => [['color' => 'g', 'value' => '2']],
+                ],
+            ],
+            'deck' => [],
+            'discard' => [['color' => 'r', 'value' => '5']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '5',
+            'pendingDraw' => 0,
+            'pendingUnoUserId' => 1,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $res = $engine->applyUnoChatResolution($state, 1, 'uno');
+
+        $this->assertSame('cleared', $res['effect']);
+        $this->assertArrayNotHasKey('pendingUnoUserId', $res['state']);
+    }
+
+    public function test_uno_chat_penalty_skipped_when_chat_rule_inactive(): void
+    {
+        $engine = new UnoEngine();
+
+        $state = [
+            'type' => 'uno',
+            'rules' => [],
+            'players' => [
+                [
+                    'user_id' => 1,
+                    'hand' => [
+                        ['color' => 'r', 'value' => '8'],
+                    ],
+                ],
+                [
+                    'user_id' => 2,
+                    'hand' => [['color' => 'g', 'value' => '2']],
+                ],
+            ],
+            'deck' => array_fill(0, 10, ['color' => 'y', 'value' => '1']),
+            'discard' => [['color' => 'r', 'value' => '5']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '5',
+            'pendingDraw' => 0,
+            'pendingUnoUserId' => 1,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $res = $engine->applyUnoChatResolution($state, 2, 'uno', false);
+
+        $this->assertSame('none', $res['effect']);
+        $this->assertSame(1, (int) ($res['state']['pendingUnoUserId'] ?? 0));
+        $this->assertCount(1, $res['state']['players'][0]['hand']);
+    }
+
+    public function test_pending_uno_not_set_when_chat_rule_inactive(): void
+    {
+        $engine = new UnoEngine();
+
+        $state = [
+            'type' => 'uno',
+            'rules' => [],
+            'players' => [
+                [
+                    'user_id' => 1,
+                    'hand' => [
+                        ['color' => 'r', 'value' => '3'],
+                        ['color' => 'r', 'value' => '5'],
+                    ],
+                ],
+                [
+                    'user_id' => 2,
+                    'hand' => [['color' => 'g', 'value' => '2']],
+                ],
+            ],
+            'deck' => array_fill(0, 20, ['color' => 'y', 'value' => '1']),
+            'discard' => [['color' => 'r', 'value' => '7']],
+            'direction' => 1,
+            'currentTurn' => 0,
+            'currentColor' => 'r',
+            'currentValue' => '7',
+            'pendingDraw' => 0,
+            'winnerUserId' => null,
+            'moveHistory' => [],
+        ];
+
+        $next = $engine->applyMove($state, 1, [
+            'type' => 'play_card',
+            'payload' => ['cardIndex' => 0],
+        ], false);
+
+        $this->assertArrayNotHasKey('pendingUnoUserId', $next);
+        $this->assertCount(1, $next['players'][0]['hand']);
     }
 }
 

@@ -60,7 +60,7 @@
         </div>
       </div>
 
-      @if (isGameSessionsRoute() && !navCompact()) {
+      @if (showGameSessionsSubNav() && !navCompact()) {
         <nav class="secondary-nav" aria-label="Session categories">
           <div class="secondary-nav__track">
             <a
@@ -98,7 +98,7 @@
         <mat-icon>sports_esports</mat-icon>
         <span>Game Sessions</span>
       </a>
-      @if (isGameSessionsRoute()) {
+      @if (showGameSessionsSubNav()) {
         <mat-divider></mat-divider>
         <div class="nav-menu__section" aria-hidden="true">Sessions</div>
         <a

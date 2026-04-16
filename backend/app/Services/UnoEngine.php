@@ -55,6 +55,7 @@ class UnoEngine
             'currentColor' => $currentColor,
             'currentValue' => $currentValue,
             'pendingDraw' => 0,
+            'pendingUnoUserId' => null,
             'winnerUserId' => null,
             'moveHistory' => [],
         ];
@@ -66,10 +67,14 @@ class UnoEngine
         return $state;
     }
 
-    public function applyMove(array $state, int $userId, array $move): array
+    public function applyMove(array $state, int $userId, array $move, bool $unoChatRuleActive = true): array
     {
         if (($state['winnerUserId'] ?? null) !== null) {
             throw new \RuntimeException('Game already finished.');
+        }
+
+        if (!$unoChatRuleActive) {
+            unset($state['pendingUnoUserId']);
         }
 
         $players = $state['players'] ?? [];
@@ -82,7 +87,7 @@ class UnoEngine
         $type = Arr::get($move, 'type');
         $payload = Arr::get($move, 'payload', []);
 
-        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
+        $rules = $this->mergedRules($state);
 
         if (($state['pendingDraw'] ?? 0) > 0) {
             $allowStacking = (bool) ($rules['allowStackingDraw2'] ?? false) || (bool) ($rules['allowStackingDraw4'] ?? false);
@@ -92,17 +97,17 @@ class UnoEngine
         }
 
         return match ($type) {
-            'play_card' => $this->playCard($state, $userId, $payload),
-            'draw' => $this->drawCard($state, $userId),
+            'play_card' => $this->playCard($state, $userId, $payload, $unoChatRuleActive),
+            'draw' => $this->drawCard($state, $userId, $unoChatRuleActive),
             default => throw new \RuntimeException('Unknown move type.'),
         };
     }
 
-    private function playCard(array $state, int $userId, array $payload): array
+    private function playCard(array $state, int $userId, array $payload, bool $unoChatRuleActive = true): array
     {
         $idx = (int) Arr::get($payload, 'cardIndex', -1);
         $chosenColor = Arr::get($payload, 'chosenColor'); // for wild
-        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
+        $rules = $this->mergedRules($state);
 
         [$playerIndex, $player] = $this->findPlayer($state, $userId);
         $hand = $player['hand'] ?? [];
@@ -113,20 +118,6 @@ class UnoEngine
         $card = $hand[$idx];
         if (!$this->isPlayable($state, $card)) {
             throw new \RuntimeException('Card is not playable.');
-        }
-
-        // Classic rule: Wild Draw 4 only legal if you have no card matching current color.
-        if (($rules['allowWildDraw4OnlyIfNoMatch'] ?? false) === true && ($card['value'] ?? null) === 'wild_draw4') {
-            $hasColorMatch = false;
-            foreach ($hand as $h) {
-                if (($h['color'] ?? null) !== 'w' && ($h['color'] ?? null) === ($state['currentColor'] ?? null)) {
-                    $hasColorMatch = true;
-                    break;
-                }
-            }
-            if ($hasColorMatch) {
-                throw new \RuntimeException('Wild Draw 4 is only allowed when you have no matching color.');
-            }
         }
 
         // Remove from hand, push to discard
@@ -168,21 +159,155 @@ class UnoEngine
             'ts' => now()->toISOString(),
         ];
 
+        $this->syncPendingUnoAfterHandChange($state, $rules, $userId, $playerIndex, $unoChatRuleActive);
+
         // Win condition
         if (count($state['players'][$playerIndex]['hand']) === 0) {
             $state['winnerUserId'] = $userId;
+            unset($state['pendingUnoUserId']);
+
             return $state;
         }
 
         $state = $this->advanceTurn($state, $skipNext);
+
         return $state;
     }
 
-    private function drawCard(array $state, int $userId): array
+    /**
+     * After playing to exactly one card, that player must type "uno" in chat before opponents catch them.
+     */
+    private function syncPendingUnoAfterHandChange(array &$state, array $rules, int $userId, int $playerIndex, bool $unoChatRuleActive = true): void
+    {
+        if (!(bool) ($rules['unoCallRequired'] ?? false)) {
+            return;
+        }
+        if (!$unoChatRuleActive) {
+            unset($state['pendingUnoUserId']);
+
+            return;
+        }
+        $newCount = count($state['players'][$playerIndex]['hand'] ?? []);
+        if ($newCount === 1) {
+            $state['pendingUnoUserId'] = $userId;
+        } elseif ($newCount === 0) {
+            unset($state['pendingUnoUserId']);
+        } elseif ((int) ($state['pendingUnoUserId'] ?? 0) === $userId) {
+            unset($state['pendingUnoUserId']);
+        }
+    }
+
+    public function mergedRules(array $state): array
+    {
+        $merged = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
+        // Stale session.rules in DB could disable UNO chat; keep house rule on for Uno games.
+        if (($state['type'] ?? '') === 'uno') {
+            $merged['unoCallRequired'] = (bool) ($this->defaultRules()['unoCallRequired'] ?? true);
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Whole message is "uno" (any casing), optional trailing punctuation / whitespace.
+     */
+    public function bodyLooksLikeUnoCall(string $body): bool
+    {
+        $t = trim($body);
+        if ($t === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/^uno[!?.;,\s]*$/i', $t);
+    }
+
+    /**
+     * @return array{state: array, effect: string, victimUserId: ?int, catcherUserId: ?int}
+     */
+    public function applyUnoChatResolution(array $state, int $senderId, string $body, bool $unoChatRuleActive = true): array
+    {
+        $out = [
+            'state' => $state,
+            'effect' => 'none',
+            'victimUserId' => null,
+            'catcherUserId' => null,
+        ];
+        $rules = $this->mergedRules($state);
+        if (!$unoChatRuleActive) {
+            return $out;
+        }
+        if (!(bool) ($rules['unoCallRequired'] ?? false)) {
+            return $out;
+        }
+        if (!$this->bodyLooksLikeUnoCall($body)) {
+            return $out;
+        }
+        $pending = (int) ($state['pendingUnoUserId'] ?? 0);
+        if ($pending <= 0) {
+            return $out;
+        }
+
+        try {
+            [$victimIndex, $victimPlayer] = $this->findPlayer($state, $pending);
+        } catch (\RuntimeException) {
+            unset($state['pendingUnoUserId']);
+            $out['state'] = $state;
+            $out['effect'] = 'stale_pending_cleared';
+
+            return $out;
+        }
+
+        if (count($victimPlayer['hand'] ?? []) !== 1) {
+            unset($state['pendingUnoUserId']);
+            $out['state'] = $state;
+            $out['effect'] = 'stale_pending_cleared';
+
+            return $out;
+        }
+
+        if ($senderId === $pending) {
+            unset($state['pendingUnoUserId']);
+            $out['state'] = $state;
+            $out['effect'] = 'cleared';
+
+            return $out;
+        }
+
+        $penalty = max(1, (int) ($rules['unoPenaltyCards'] ?? 2));
+        $state = $this->drawNCardsForPlayer($state, $pending, $penalty);
+        unset($state['pendingUnoUserId']);
+        $out['state'] = $state;
+        $out['effect'] = 'penalty';
+        $out['victimUserId'] = $pending;
+        $out['catcherUserId'] = $senderId;
+
+        return $out;
+    }
+
+    private function drawNCardsForPlayer(array $state, int $userId, int $n): array
+    {
+        [$playerIndex, $player] = $this->findPlayer($state, $userId);
+        for ($i = 0; $i < $n; $i++) {
+            $state = $this->ensureDeck($state);
+            $card = array_pop($state['deck']);
+            $state['players'][$playerIndex]['hand'][] = $card;
+        }
+        $state['players'][$playerIndex]['hand'] = array_values($state['players'][$playerIndex]['hand']);
+        $state['moveHistory'][] = [
+            'type' => 'uno_penalty',
+            'user_id' => $userId,
+            'drawn' => $n,
+            'ts' => now()->toISOString(),
+        ];
+
+        return $state;
+    }
+
+    private function drawCard(array $state, int $userId, bool $unoChatRuleActive = true): array
     {
         [$playerIndex, $player] = $this->findPlayer($state, $userId);
 
-        $rules = array_merge($this->defaultRules(), (array) ($state['rules'] ?? []));
+        $rules = $this->mergedRules($state);
         $drawCount = (int) ($state['pendingDraw'] ?? 0);
         if ($drawCount <= 0) $drawCount = 1;
 
@@ -217,6 +342,13 @@ class UnoEngine
 
         $state['pendingDraw'] = 0;
 
+        if ($unoChatRuleActive && (bool) ($rules['unoCallRequired'] ?? false)) {
+            $hc = count($state['players'][$playerIndex]['hand'] ?? []);
+            if ($hc !== 1 && (int) ($state['pendingUnoUserId'] ?? 0) === $userId) {
+                unset($state['pendingUnoUserId']);
+            }
+        }
+
         // MVP rule: drawing ends your turn.
         $state = $this->advanceTurn($state, false);
         return $state;
@@ -229,9 +361,9 @@ class UnoEngine
             'allowStackingDraw4' => false,
             'drawToMatch' => false,
             'forcePlayIfPossible' => false,
-            'allowWildDraw4OnlyIfNoMatch' => true,
+            'allowWildDraw4OnlyIfNoMatch' => false, // unused; Wild Draw 4 is always allowed
             'startingCardActionsApply' => true,
-            'unoCallRequired' => false,
+            'unoCallRequired' => true,
             'unoPenaltyCards' => 2,
         ];
     }

@@ -20,6 +20,7 @@ class UserGameSession extends Model
         'is_ready',
         'left_at',
         'is_ai',
+        'chat_muted',
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class UserGameSession extends Model
         'score' => 'integer',
         'is_ready' => 'boolean',
         'is_ai' => 'boolean',
+        'chat_muted' => 'boolean',
         'left_at' => 'datetime',
     ];
 

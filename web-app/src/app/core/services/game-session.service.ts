@@ -10,6 +10,8 @@ export interface GameSessionPlayerPivot {
   score?: number;
   seat?: number | null;
   is_ready?: boolean;
+  /** Present only for the authenticated user’s row; hidden for other players. */
+  chat_muted?: boolean;
   left_at?: string | null;
   user?: {
     id?: number;
@@ -211,6 +213,17 @@ export class GameSessionService {
     }>(
       `${this.apiUrl}game-sessions/${id}/chat`,
       { body },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  updateChatMute(
+    id: number,
+    chat_muted: boolean
+  ): Observable<{ success: boolean; results: GameSession; message: string }> {
+    return this.http.patch<{ success: boolean; results: GameSession; message: string }>(
+      `${this.apiUrl}game-sessions/${id}/chat-mute`,
+      { chat_muted },
       { headers: this.getAuthHeaders() }
     );
   }

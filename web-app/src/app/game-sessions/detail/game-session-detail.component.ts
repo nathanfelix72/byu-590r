@@ -5,9 +5,11 @@ import {
   OnDestroy,
   inject,
   signal,
+  computed,
   ViewChild,
   ElementRef,
   AfterViewInit,
+  effect,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -28,7 +30,11 @@ import { RealtimeService } from '../../core/services/realtime.service';
 import { UserStore } from '../../core/stores/user.store';
 import { UserService } from '../../core/services/user.service';
 import { UnoCardComponent } from '../../uno/uno-card/uno-card.component';
-import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
+import { UnoBoardBackgroundComponent } from '../../uno/uno-board-background/uno-board-background.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-game-session-detail',
@@ -42,12 +48,14 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
     MatFormFieldModule,
     MatInputModule,
     UnoCardComponent,
+    UnoBoardBackgroundComponent,
   ],
   templateUrl: './game-session-detail.component.html',
   styleUrl: './game-session-detail.component.scss',
 })
 export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('myHandContainer') myHandContainer?: ElementRef;
+  @ViewChild('chatLog') private chatLogRef?: ElementRef<HTMLElement>;
   
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -60,13 +68,26 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
 
   session = signal<GameSession | null>(null);
   chatMessages = signal<GameSessionChatMessage[]>([]);
+  /** Synced with server (PATCH chat-mute) and mirrored in localStorage for first paint. */
+  protected chatMuted = signal(false);
+  private lastUnoPenaltyHandledKey: string | null = null;
+  /** When muted, hide all messages on screen (history returns when unmuted). */
+  protected visibleChatMessages = computed(() =>
+    this.chatMuted() ? [] : this.chatMessages()
+  );
   chatDraft = '';
   isLoading = signal(false);
   unoBackgroundImage = signal<string | null>(null);
   private lastWinnerSeen = signal<number | null>(null);
   containerWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 800);
 
+  /** Hidden after you play/draw; resets when it’s not your turn so the next your-turn shows again. */
+  private yourTurnBannerDismissed = signal(false);
+
   private opponentBacksCap = 20;
+
+  private myHandResizeObserver: ResizeObserver | null = null;
+  private measureContainerRaf: number | null = null;
 
   private pendingWildCardIndex = signal<number | null>(null);
 
@@ -92,24 +113,68 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
         this.realtime.leave(`game-session.${this.sessionId()}`);
         this.realtimeBoundSessionId = null;
         this.sessionId.set(nextId);
+        this.lastUnoPenaltyHandledKey = null;
+        this.loadChatMutePreference();
         this.refresh();
         this.scheduleRealtimeAttach(0);
       });
+
+    effect(() => {
+      this.session();
+      const uid = this.myUserId;
+      const turn = this.currentTurnUserId;
+      if (uid === null || turn !== uid) {
+        this.yourTurnBannerDismissed.set(false);
+      }
+    });
+
+    effect(() => {
+      this.session();
+      this.scheduleMeasureContainerWidth();
+    });
+
+    effect(() => {
+      this.chatMuted();
+      this.chatMessages().length;
+      queueMicrotask(() => {
+        if (this.chatMuted()) {
+          return;
+        }
+        this.scrollChatToBottom();
+      });
+    });
+
+    effect(() => {
+      if (this.session()?.status === 'finished') {
+        this.pendingWildCardIndex.set(null);
+      }
+    });
   }
 
   ngOnInit(): void {
+    this.loadChatMutePreference();
     this.refresh();
     this.scheduleRealtimeAttach(0);
   }
 
   ngAfterViewInit(): void {
-    // Trigger change detection when container is ready
-    setTimeout(() => {
-      this.containerWidth.set(this.getHandContainerWidth());
-    }, 0);
+    this.scheduleMeasureContainerWidth();
+    const el = this.myHandContainer?.nativeElement;
+    if (el && typeof ResizeObserver !== 'undefined') {
+      this.myHandResizeObserver = new ResizeObserver(() => {
+        this.scheduleMeasureContainerWidth();
+      });
+      this.myHandResizeObserver.observe(el);
+    }
   }
 
   ngOnDestroy(): void {
+    this.myHandResizeObserver?.disconnect();
+    this.myHandResizeObserver = null;
+    if (this.measureContainerRaf != null) {
+      cancelAnimationFrame(this.measureContainerRaf);
+      this.measureContainerRaf = null;
+    }
     this.realtime.leave(`game-session.${this.sessionId()}`);
     this.realtimeBoundSessionId = null;
   }
@@ -121,9 +186,27 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     return 800; // fallback
   }
 
+  private updateContainerWidth(): void {
+    const w = this.getHandContainerWidth();
+    if (w > 0) {
+      this.containerWidth.set(w);
+    }
+  }
+
+  /** Session updates, turns, layout: always measure after the latest scheduled frame. */
+  private scheduleMeasureContainerWidth(): void {
+    if (this.measureContainerRaf != null) {
+      cancelAnimationFrame(this.measureContainerRaf);
+    }
+    this.measureContainerRaf = requestAnimationFrame(() => {
+      this.measureContainerRaf = null;
+      this.updateContainerWidth();
+    });
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
-    this.containerWidth.set(this.getHandContainerWidth());
+    this.scheduleMeasureContainerWidth();
   }
 
   @HostListener('document:visibilitychange')
@@ -273,7 +356,12 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     this.service.getGameSession(this.sessionId()).subscribe({
       next: (res) => {
         this.session.set(res.results);
-        this.unoBackgroundImage.set(res.results?.game_session_background_picture ?? null);
+        this.applyChatMuteFromServerSession(res.results);
+        this.maybeNotifyUnoPenalty(res.results);
+        const nextBg = res.results?.game_session_background_picture ?? null;
+        if (nextBg !== this.unoBackgroundImage()) {
+          this.unoBackgroundImage.set(nextBg);
+        }
         
         const st = res.results?.status;
         if (st && st !== 'waiting') {
@@ -307,6 +395,95 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     });
   }
 
+  private chatMuteStorageKey(sessionId: number): string {
+    return `gameSessionChatMuted:${sessionId}`;
+  }
+
+  loadChatMutePreference(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    const id = this.sessionId();
+    if (!Number.isFinite(id) || id <= 0) {
+      return;
+    }
+    this.chatMuted.set(localStorage.getItem(this.chatMuteStorageKey(id)) === '1');
+  }
+
+  private applyChatMuteFromServerSession(sess: GameSession | null): void {
+    const me = this.myUserId;
+    if (sess == null || me === null || !sess.players?.length) {
+      return;
+    }
+    const row = sess.players.find((p) => p.user_id === me);
+    if (row && typeof row.chat_muted === 'boolean') {
+      this.chatMuted.set(row.chat_muted);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.chatMuteStorageKey(sess.id), row.chat_muted ? '1' : '0');
+      }
+    }
+  }
+
+  private maybeNotifyUnoPenalty(sess: GameSession): void {
+    const uid = this.myUserId;
+    if (uid === null) {
+      return;
+    }
+    const history = (sess as { state?: { moveHistory?: unknown[] } })?.state?.moveHistory;
+    if (!Array.isArray(history) || history.length === 0) {
+      return;
+    }
+    const last = history[history.length - 1] as { type?: string; user_id?: number; ts?: string; drawn?: number };
+    if (last?.type !== 'uno_penalty' || Number(last?.user_id) !== Number(uid)) {
+      return;
+    }
+    const key = `${last.ts ?? ''}|${last.drawn ?? ''}`;
+    if (key && key === this.lastUnoPenaltyHandledKey) {
+      return;
+    }
+    this.lastUnoPenaltyHandledKey = key;
+
+    const data: ConfirmDialogData = {
+      title: 'UNO',
+      message: 'You didn\'t say "uno" in time.',
+      confirmText: 'OK',
+      hideCancel: true,
+    };
+    this.dialog.open(ConfirmDialogComponent, { width: '360px', data });
+  }
+
+  private scrollChatToBottom(): void {
+    const el = this.chatLogRef?.nativeElement;
+    if (!el) {
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  toggleChatMute(): void {
+    const next = !this.chatMuted();
+    const id = this.sessionId();
+    if (!Number.isFinite(id) || id <= 0) {
+      return;
+    }
+    this.service.updateChatMute(id, next).subscribe({
+      next: (res) => {
+        this.chatMuted.set(next);
+        this.session.set(res.results);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(this.chatMuteStorageKey(id), next ? '1' : '0');
+        }
+      },
+      error: (err) => {
+        this.snackBar.open(
+          err?.error?.data?.error || err?.error?.message || 'Could not update chat preference',
+          'Close',
+          { duration: 5000 }
+        );
+      },
+    });
+  }
+
   private upsertChatMessage(msg: GameSessionChatMessage): void {
     const list = [...this.chatMessages()];
     const i = list.findIndex((m) => m.id === msg.id);
@@ -317,6 +494,9 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
   }
 
   sendChat(): void {
+    if (!this.canSendChat) {
+      return;
+    }
     const id = this.sessionId();
     const body = this.chatDraft.trim();
     if (!Number.isFinite(id) || id <= 0 || !body) return;
@@ -366,9 +546,26 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
   }
 
   get isMyTurn(): boolean {
+    if (this.session()?.status !== 'in_progress') {
+      return false;
+    }
     const uid = this.myUserId;
     const turnUid = this.currentTurnUserId;
     return !!uid && !!turnUid && uid === turnUid;
+  }
+
+  get gameIsFinished(): boolean {
+    return this.session()?.status === 'finished';
+  }
+
+  /** When false, composer is disabled (muted locally or game ended). */
+  get canSendChat(): boolean {
+    return !this.chatMuted() && !this.gameIsFinished;
+  }
+
+  /** Non-blocking banner; dismissed after you play or draw. */
+  showYourTurnBanner(): boolean {
+    return this.isMyTurn && !this.yourTurnBannerDismissed();
   }
 
   get isHost(): boolean {
@@ -386,7 +583,9 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     const value = card.value;
     if (color === undefined || color === null || color === '') return false;
     if (value === undefined || value === null || value === '') return false;
-    if (color === 'w') return true;
+    if (color === 'w') {
+      return true;
+    }
     if (state.currentColor === color) return true;
     if (state.currentValue === value) return true;
     return false;
@@ -412,47 +611,75 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     return me?.hand ?? [];
   }
 
+  /**
+   * Matches `.opponents { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px }`
+   * so one wide column isn’t treated as half the table width.
+   */
+  private opponentGridColumnCount(): number {
+    const W = Math.max(0, this.containerWidth());
+    const minCol = 160;
+    const gap = 12;
+    return Math.max(1, Math.floor((W + gap) / (minCol + gap)));
+  }
+
+  private opponentPanelCount(): number {
+    const uid = this.myUserId;
+    const players = this.unoState?.players;
+    if (!players || !Array.isArray(players)) return 1;
+    return Math.max(1, players.filter((p: any) => Number(p.user_id) !== Number(uid)).length);
+  }
+
+  /**
+   * Width for one opponent row: matches `auto-fit` collapsing empty tracks — a lone opponent
+   * uses the full row width, not `1 / maxColumns`.
+   */
+  private opponentRailUsableWidth(): number {
+    const maxCols = this.opponentGridColumnCount();
+    const gap = 12;
+    const W = Math.max(0, this.containerWidth());
+    const n = this.opponentPanelCount();
+    const colsUsed = Math.min(maxCols, n);
+    const cell = (W - (colsUsed - 1) * gap) / colsUsed;
+    const opponentHorizontalPadding = 28; // 14px × 2 on `.opponent`
+    return Math.max(80, cell - opponentHorizontalPadding);
+  }
+
   cardOverlapAmount(): number {
     const count = this.myHand().length;
     if (count <= 1) return 0;
-    
+
     const cardWidth = 110; // md size card width
     const totalSpaceNeeded = cardWidth * count;
-    const availableWidth = this.containerWidth();
-    const padding = 16; // 8px padding on each side
-    const usableWidth = availableWidth - padding;
-    
-    // If all cards fit without overlap, return 0
+    const railPadding = 16; // `.myHand__rail` horizontal padding 8px × 2
+    const usableWidth = Math.max(0, this.containerWidth() - railPadding);
+
     if (totalSpaceNeeded <= usableWidth) {
       return 0;
     }
-    
-    // Calculate overlap needed to fit all cards
+
     const spaceToSave = totalSpaceNeeded - usableWidth;
-    const overlap = spaceToSave / (count - 1);
-    
-    return Math.max(0, overlap);
+    return Math.max(0, spaceToSave / (count - 1));
+  }
+
+  /** Cards actually rendered in the opponent rail (capped; matches `opponentHandBacks`). */
+  private opponentVisibleCardCount(handCount: number): number {
+    return Math.max(0, Math.min(handCount, this.opponentBacksCap));
   }
 
   opponentCardOverlapAmount(handCount: number): number {
-    if (handCount <= 1) return 0;
-    
+    const count = this.opponentVisibleCardCount(handCount);
+    if (count <= 1) return 0;
+
     const cardWidth = 84; // sm size card width
-    const totalSpaceNeeded = cardWidth * handCount;
-    const availableWidth = this.containerWidth() * 0.5; // opponent cards are roughly half width
-    const padding = 16; // padding
-    const usableWidth = availableWidth - padding;
-    
-    // If all cards fit without overlap, return 0
+    const totalSpaceNeeded = cardWidth * count;
+    const usableWidth = this.opponentRailUsableWidth();
+
     if (totalSpaceNeeded <= usableWidth) {
       return 0;
     }
-    
-    // Calculate overlap needed to fit all cards
+
     const spaceToSave = totalSpaceNeeded - usableWidth;
-    const overlap = spaceToSave / (handCount - 1);
-    
-    return Math.max(0, overlap);
+    return Math.max(0, spaceToSave / (count - 1));
   }
 
   playersList(): any[] {
@@ -462,12 +689,6 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
 
   activeLobbyPlayers(): any[] {
     return this.playersList().filter((p: any) => !p.left_at);
-  }
-
-  getTurnDirection(): string {
-    const state = this.unoState;
-    const direction = state?.direction ?? 'clockwise';
-    return direction === 'clockwise' ? 'Clockwise' : 'Counter-clockwise';
   }
 
   cardCountLabelForUser(userId: number): string {
@@ -515,6 +736,9 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
   }
 
   chooseWildColor(color: 'r' | 'g' | 'b' | 'y'): void {
+    if (this.gameIsFinished) {
+      return;
+    }
     const idx = this.pendingWildCardIndex();
     if (idx === null) return;
 
@@ -522,8 +746,12 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     this.submitPlayCard(idx, color);
   }
 
+  cancelWildPicker(): void {
+    this.pendingWildCardIndex.set(null);
+  }
+
   playCard(cardIndex: number): void {
-    if (!this.isMyTurn) return;
+    if (!this.isMyTurn || this.gameIsFinished) return;
 
     const card = this.myHand()[cardIndex];
     if (!card) return;
@@ -545,7 +773,7 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
 
   private submitPlayCard(cardIndex: number, chosenColor?: 'r' | 'g' | 'b' | 'y'): void {
     const s = this.session();
-    if (!s) return;
+    if (!s || s.status !== 'in_progress') return;
 
     // Animate from the selected hand card to the discard pile.
     this.animateHandCardToDiscard(cardIndex);
@@ -561,7 +789,10 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
         clientVersion,
       })
       .subscribe({
-        next: (res) => this.session.set(res.results),
+        next: (res) => {
+          this.yourTurnBannerDismissed.set(true);
+          this.session.set(res.results);
+        },
         error: (err) => {
           // If this was a wild selection, reopen the picker so the player can try again.
           if (chosenColor && this.pendingWildCardIndex() === null) {
@@ -625,15 +856,79 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     }
   }
 
+  /** Flying card from deck to the hand slot that received the drawn card (after server response). */
+  private animateDeckToHand(targetHandIndex: number): void {
+    try {
+      const deckRoot = document.querySelector('[data-uno-deck]') as HTMLElement | null;
+      const deckCardHost = deckRoot?.querySelector('app-uno-card') as HTMLElement | null;
+      const startEl = deckCardHost ?? deckRoot;
+      if (!startEl) return;
+
+      const handBtn = document.querySelector(
+        `[data-hand-card-index="${targetHandIndex}"]`
+      ) as HTMLElement | null;
+      if (!handBtn) return;
+
+      const endCardHost = handBtn.querySelector('app-uno-card') as HTMLElement | null;
+      const endEl = endCardHost ?? handBtn;
+
+      const startRect = startEl.getBoundingClientRect();
+      const endRect = endEl.getBoundingClientRect();
+
+      const clone = startEl.cloneNode(true) as HTMLElement;
+      clone.style.position = 'fixed';
+      clone.style.left = `${startRect.left}px`;
+      clone.style.top = `${startRect.top}px`;
+      clone.style.width = `${startRect.width}px`;
+      clone.style.height = `${startRect.height}px`;
+      clone.style.zIndex = '9999';
+      clone.style.pointerEvents = 'none';
+      clone.style.margin = '0';
+      document.body.appendChild(clone);
+
+      const dx = endRect.left - startRect.left;
+      const dy = endRect.top - startRect.top;
+      const scale = endRect.width > 0 && startRect.width > 0 ? endRect.width / startRect.width : 0.88;
+
+      clone.animate(
+        [
+          { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+          { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0 },
+        ],
+        { duration: 460, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+      );
+
+      window.setTimeout(() => {
+        clone.remove();
+      }, 520);
+    } catch {
+      // Animation is best-effort; ignore failures.
+    }
+  }
+
   draw(): void {
     if (!this.isMyTurn) return;
     const s = this.session();
-    if (!s) return;
+    if (!s || s.status !== 'in_progress') return;
     const clientVersion = (s.version ?? 0) as number;
     this.service
       .makeMove(s.id, { type: 'draw', payload: {}, clientVersion })
       .subscribe({
-        next: (res) => this.session.set(res.results),
+        next: (res) => {
+          this.yourTurnBannerDismissed.set(true);
+          const uid = this.myUserId;
+          const state: any = res.results?.state;
+          let lastHandIndex = 0;
+          if (uid && state?.players && Array.isArray(state.players)) {
+            const me = state.players.find((p: any) => Number(p.user_id) === Number(uid));
+            const len = Array.isArray(me?.hand) ? me.hand.length : 0;
+            lastHandIndex = Math.max(0, len - 1);
+          }
+          this.session.set(res.results);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.animateDeckToHand(lastHandIndex));
+          });
+        },
         error: (err) => {
           this.snackBar.open(err?.error?.data?.error || err?.error?.message || 'Draw failed', 'Close', {
             duration: 5000,

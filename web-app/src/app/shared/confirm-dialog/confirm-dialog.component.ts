@@ -7,6 +7,8 @@ export interface ConfirmDialogData {
   message: string;
   confirmText?: string;
   cancelText?: string;
+  /** When true, only the confirm button is shown (e.g. informational alerts). */
+  hideCancel?: boolean;
   confirmColor?: 'primary' | 'accent' | 'warn';
 }
 
@@ -18,7 +20,9 @@ export interface ConfirmDialogData {
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>{{ data.message }}</mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>{{ data.cancelText ?? 'Cancel' }}</button>
+      @if (!data.hideCancel) {
+        <button mat-button mat-dialog-close>{{ data.cancelText ?? 'Cancel' }}</button>
+      }
       <button
         mat-flat-button
         [color]="data.confirmColor ?? 'primary'"

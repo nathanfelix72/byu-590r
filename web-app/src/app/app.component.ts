@@ -100,6 +100,15 @@ export class AppComponent implements OnInit {
   }
 
   /**
+   * Active / Completed / Create sub-nav only on the list page — hide on /game-sessions/:id (lobby or in play).
+   */
+  showGameSessionsSubNav(): boolean {
+    if (!this.isGameSessionsRoute()) return false;
+    const path = this.router.url.split('?')[0].replace(/\/+$/, '') || '/';
+    return path === '/game-sessions';
+  }
+
+  /**
    * Tab state for the game-sessions sub-nav. Defaults to Active when the URL has no
    * ?tab= (so highlighting matches the list view and routerLinkActive).
    */

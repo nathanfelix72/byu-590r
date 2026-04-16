@@ -101,36 +101,61 @@ class GameSessionController extends BaseController
         }
 
         $userId = auth()->id();
-        $session = GameSession::find($id);
-        if (!$session) {
-            return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
-        }
-        $isMember = $session->players()->where('user_id', $userId)->whereNull('left_at')->exists();
-        if (!$isMember) {
-            return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
-        }
-        if ($session->status === 'waiting') {
-            return $this->sendError('Conflict.', ['error' => 'Chat is available once the game has started'], 409);
-        }
 
-        $msg = GameSessionMessage::create([
-            'game_session_id' => (int) $id,
-            'user_id' => (int) $userId,
-            'body' => (string) $request->input('body'),
-        ]);
-        $msg->load('user:id,name');
+        return DB::transaction(function () use ($request, $id, $userId) {
+            /** @var GameSession|null $session */
+            $session = GameSession::lockForUpdate()->find($id);
+            if (!$session) {
+                return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+            }
+            $isMember = $session->players()->where('user_id', $userId)->whereNull('left_at')->exists();
+            if (!$isMember) {
+                return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
+            }
+            if ($session->status === 'waiting') {
+                return $this->sendError('Conflict.', ['error' => 'Chat is available once the game has started'], 409);
+            }
+            if ($session->status === 'finished') {
+                return $this->sendError('Conflict.', ['error' => 'Chat is closed for finished games'], 409);
+            }
 
-        $payload = [
-            'id' => $msg->id,
-            'body' => $msg->body,
-            'user_id' => $msg->user_id,
-            'user_name' => $msg->user?->name ?? ('Player ' . $msg->user_id),
-            'created_at' => $msg->created_at?->toISOString(),
-        ];
+            $msg = GameSessionMessage::create([
+                'game_session_id' => (int) $id,
+                'user_id' => (int) $userId,
+                'body' => (string) $request->input('body'),
+            ]);
+            $msg->load('user:id,name');
 
-        event(new GameSessionChatMessage((int) $id, $payload));
+            $payload = [
+                'id' => $msg->id,
+                'body' => $msg->body,
+                'user_id' => $msg->user_id,
+                'user_name' => $msg->user?->name ?? ('Player ' . $msg->user_id),
+                'created_at' => $msg->created_at?->toISOString(),
+            ];
 
-        return $this->sendResponse($payload, 'Message sent');
+            if ($session->status === 'in_progress' && is_array($session->state) && ($session->state['type'] ?? null) === 'uno') {
+                $session->refresh();
+                $unoChatRuleActive = $this->allActivePlayersHaveChatUnmuted($session);
+                $resolution = $this->uno->applyUnoChatResolution(
+                    $session->state ?? [],
+                    (int) $userId,
+                    (string) $msg->body,
+                    $unoChatRuleActive
+                );
+                if (($resolution['effect'] ?? 'none') !== 'none') {
+                    $session->state = $resolution['state'];
+                    $session->version = (int) $session->version + 1;
+                    $session->save();
+
+                    event(new GameSessionUpdated($session->id));
+                }
+            }
+
+            event(new GameSessionChatMessage((int) $id, $payload));
+
+            return $this->sendResponse($payload, 'Message sent');
+        });
     }
 
     public function store(Request $request)
@@ -487,11 +512,13 @@ class GameSessionController extends BaseController
                 return $this->sendError('Invalid state.', ['error' => 'Session state not initialized'], 500);
             }
 
+            $unoChatRuleActive = $this->allActivePlayersHaveChatUnmuted($session);
+
             try {
                 $newState = $this->uno->applyMove($state, $userId, [
                     'type' => $request->input('type'),
                     'payload' => $request->input('payload', []),
-                ]);
+                ], $unoChatRuleActive);
             } catch (\RuntimeException $e) {
                 return $this->sendError('Invalid move.', ['error' => $e->getMessage()], 422);
             }
@@ -566,10 +593,78 @@ class GameSessionController extends BaseController
         });
     }
 
+    public function updateChatMute(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'chat_muted' => 'required|boolean',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 422);
+        }
+
+        /** @var int $userId */
+        $userId = auth()->id();
+
+        return DB::transaction(function () use ($request, $id, $userId) {
+            /** @var GameSession|null $session */
+            $session = GameSession::lockForUpdate()->with(['players'])->find($id);
+            if (!$session) {
+                return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+            }
+
+            $pivot = UserGameSession::query()
+                ->where('game_session_id', (int) $id)
+                ->where('user_id', $userId)
+                ->whereNull('left_at')
+                ->first();
+            if (!$pivot) {
+                return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
+            }
+
+            $pivot->chat_muted = $request->boolean('chat_muted');
+            $pivot->save();
+
+            if ($session->status === 'in_progress'
+                && is_array($session->state)
+                && ($session->state['type'] ?? null) === 'uno'
+                && !$this->allActivePlayersHaveChatUnmuted($session)) {
+                $state = $session->state;
+                unset($state['pendingUnoUserId']);
+                $session->state = $state;
+                $session->version = (int) $session->version + 1;
+                $session->save();
+            }
+
+            $session->load(['game', 'host', 'players.user']);
+            event(new GameSessionUpdated($session->id));
+
+            return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Chat preference updated');
+        });
+    }
+
+    /**
+     * UNO "say uno in chat" rule only applies when every active player has chat unmuted.
+     */
+    private function allActivePlayersHaveChatUnmuted(GameSession $session): bool
+    {
+        return ! $session->players()
+            ->whereNull('left_at')
+            ->where('chat_muted', true)
+            ->exists();
+    }
+
     private function presentSessionForUser(GameSession $session, int $userId): GameSession
     {
         $session->game_session_cover_picture = $this->resolveStoredImagePath($session->game_session_cover_picture);
         $session->game_session_background_picture = $this->resolveStoredImagePath($session->game_session_background_picture);
+
+        if ($session->relationLoaded('players')) {
+            foreach ($session->players as $p) {
+                if ((int) $p->user_id !== (int) $userId) {
+                    $p->makeHidden(['chat_muted']);
+                }
+            }
+        }
 
         $state = $session->state;
         if (!is_array($state) || ($state['type'] ?? null) !== 'uno') {

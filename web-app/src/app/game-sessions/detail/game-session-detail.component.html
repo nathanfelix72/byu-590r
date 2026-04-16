@@ -24,6 +24,16 @@
       </div>
     </header>
 
+    @if (
+      session()!.status === 'finished' &&
+      unoState?.winnerUserId !== null &&
+      unoState?.winnerUserId !== undefined
+    ) {
+      <div class="gameOverBanner" role="status">
+        Game over · <strong>{{ winnerName() }}</strong> wins
+      </div>
+    }
+
     <div class="grid">
       @if (session()!.status === 'waiting') {
         <div class="card">
@@ -37,18 +47,35 @@
         </div>
       } @else {
         <div class="card chatCard">
-          <div class="card__title">Chat</div>
+          <div class="card__title card__titleRow">
+            <span>Chat</span>
+            <button
+              type="button"
+              class="chatMuteBtn"
+              (click)="toggleChatMute()"
+              [attr.aria-pressed]="chatMuted()"
+              [attr.aria-label]="chatMuted() ? 'Unmute chat' : 'Mute chat'"
+            >
+              {{ chatMuted() ? 'Unmute' : 'Mute' }}
+            </button>
+          </div>
           <div class="card__content">
-            <div class="chatLog">
-              @for (m of chatMessages(); track m.id) {
-                <div class="chatLine" [class.chatLine--mine]="m.user_id === myUserId">
-                  <span class="chatLine__who">{{ m.user_name }}</span>
-                  <span class="chatLine__text">{{ m.body }}</span>
-                </div>
-              } @empty {
-                <p class="muted">No messages yet. Say hi!</p>
-              }
-            </div>
+            @if (chatMuted()) {
+              <p class="muted chatMutedHint">
+                Chat is off for you until you unmute. You cannot send messages while muted. Others are not notified.
+              </p>
+            } @else {
+              <div class="chatLog" #chatLog>
+                @for (m of visibleChatMessages(); track m.id) {
+                  <div class="chatLine" [class.chatLine--mine]="m.user_id === myUserId">
+                    <span class="chatLine__who">{{ m.user_name }}</span>
+                    <span class="chatLine__text">{{ m.body }}</span>
+                  </div>
+                } @empty {
+                  <p class="muted">No messages yet. Say hi!</p>
+                }
+              </div>
+            }
             <div class="chatComposer">
               <mat-form-field appearance="outline" class="chatComposer__field" subscriptSizing="dynamic">
                 <mat-label>Message</mat-label>
@@ -56,11 +83,32 @@
                   matInput
                   [(ngModel)]="chatDraft"
                   maxlength="2000"
+                  [disabled]="!canSendChat"
                   (keydown.enter)="$event.preventDefault(); sendChat()"
                 />
               </mat-form-field>
-              <button mat-flat-button color="primary" type="button" (click)="sendChat()">Send</button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="chatComposer__mute"
+                (click)="toggleChatMute()"
+                [attr.aria-pressed]="chatMuted()"
+              >
+                {{ chatMuted() ? 'Unmute' : 'Mute' }}
+              </button>
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="sendChat()"
+                [disabled]="!canSendChat"
+              >
+                Send
+              </button>
             </div>
+            @if (gameIsFinished) {
+              <p class="muted chatClosedHint">Chat is closed for this finished game.</p>
+            }
           </div>
         </div>
       }
@@ -85,27 +133,34 @@
       </div>
     </div>
 
-    @if (session()!.status === 'in_progress' && unoState) {
+    @if ((session()!.status === 'in_progress' || session()!.status === 'finished') && unoState) {
       <div
         class="unoTable"
         [class.unoTable--my-turn]="isMyTurn"
       >
-        <div 
-          class="unoTable__felt"
-          [style.background-image]="unoBackgroundImage() ? 'url(' + unoBackgroundImage() + ')' : 'none'"
-          [class.unoTable__felt--with-image]="!!unoBackgroundImage()"
-        >
+        <div class="unoTable__felt">
+          <app-uno-board-background [imageUrl]="unoBackgroundImage()" />
+          @if (showYourTurnBanner()) {
+            <div class="yourTurnToast" role="status" aria-live="polite">
+              <span class="yourTurnToast__title">Your turn</span>
+              <span class="yourTurnToast__hint">Play a card or tap the deck to draw</span>
+            </div>
+          }
           <div class="opponents">
             @for (p of (unoState.players || []); track p.user_id) {
               @if (p.user_id !== myUserId) {
                 <div
                   class="opponent"
-                  [class.opponent--active]="p.user_id === currentTurnUserId"
+                  [class.opponent--active]="!gameIsFinished && p.user_id === currentTurnUserId"
                 >
                   <div class="opponent__name">{{ nameForUserId(p.user_id) }}</div>
                   <div class="opponent__hand">
                     @if (typeof p.handCount === 'number') {
-                      <div class="opponentHand__rail" [style.--card-overlap]="opponentCardOverlapAmount(p.handCount) + 'px'">
+                      <div
+                        class="opponentHand__rail"
+                        [class.opponentHand__rail--compressed]="opponentCardOverlapAmount(p.handCount) > 0"
+                        [style.--card-overlap]="opponentCardOverlapAmount(p.handCount) + 'px'"
+                      >
                         @for (_ of opponentHandBacks(p.handCount); track $index) {
                           <app-uno-card
                             [card]="{ color: 'w', value: 'wild' }"
@@ -128,22 +183,29 @@
             }
           </div>
 
-          @if (wildPickerOpen()) {
-            <div class="wildPicker" (click)="$event.stopPropagation()">
-              <div class="wildPicker__title">Choose a color</div>
-              <div class="wildPicker__buttons">
-                <button class="wildColorBtn wildColorBtn--r" type="button" (click)="chooseWildColor('r')">
-                  Red
-                </button>
-                <button class="wildColorBtn wildColorBtn--g" type="button" (click)="chooseWildColor('g')">
-                  Green
-                </button>
-                <button class="wildColorBtn wildColorBtn--b" type="button" (click)="chooseWildColor('b')">
-                  Blue
-                </button>
-                <button class="wildColorBtn wildColorBtn--y" type="button" (click)="chooseWildColor('y')">
-                  Yellow
-                </button>
+          @if (wildPickerOpen() && !gameIsFinished) {
+            <div class="wildPickerBackdrop">
+              <div class="wildPicker" (click)="$event.stopPropagation()">
+                <div class="wildPicker__header">
+                  <div class="wildPicker__title">Choose a color</div>
+                  <button type="button" class="wildPicker__close" aria-label="Cancel" (click)="cancelWildPicker()">
+                    ×
+                  </button>
+                </div>
+                <div class="wildPicker__buttons">
+                  <button class="wildColorBtn wildColorBtn--r" type="button" (click)="chooseWildColor('r')">
+                    Red
+                  </button>
+                  <button class="wildColorBtn wildColorBtn--g" type="button" (click)="chooseWildColor('g')">
+                    Green
+                  </button>
+                  <button class="wildColorBtn wildColorBtn--b" type="button" (click)="chooseWildColor('b')">
+                    Blue
+                  </button>
+                  <button class="wildColorBtn wildColorBtn--y" type="button" (click)="chooseWildColor('y')">
+                    Yellow
+                  </button>
+                </div>
               </div>
             </div>
           }
@@ -159,25 +221,33 @@
                   ></app-uno-card>
                 }
               </div>
-              <div class="deck" (click)="isMyTurn && draw()" [class.deck--clickable]="isMyTurn">
+              <div
+                class="deck"
+                data-uno-deck
+                (click)="isMyTurn && draw()"
+                [class.deck--clickable]="isMyTurn && !gameIsFinished"
+              >
                 <app-uno-card [card]="{ color: 'w', value: 'wild' }" [faceDown]="true" size="lg"></app-uno-card>
               </div>
             </div>
-            @if (isMyTurn && unoState.pendingDraw > 0) {
+            @if (session()!.status === 'in_progress' && isMyTurn && unoState.pendingDraw > 0) {
               <div class="pendingDrawHint">Draw {{ unoState.pendingDraw }} card(s).</div>
             }
-            <div class="turnDirection">{{ getTurnDirection() }}</div>
           </div>
 
           <div class="myHand" #myHandContainer [style.--card-overlap]="cardOverlapAmount() + 'px'">
-            <div class="myHand__rail" [class.myHand__rail--disabled]="!isMyTurn">
+            <div
+              class="myHand__rail"
+              [class.myHand__rail--compressed]="cardOverlapAmount() > 0"
+              [class.myHand__rail--disabled]="!isMyTurn || gameIsFinished"
+            >
               @for (c of myHand(); track $index) {
                 <button
                   class="fanCard"
                   type="button"
                   [attr.data-hand-card-index]="$index"
                   (click)="playCard($index)"
-                  [disabled]="!isMyTurn || wildPickerOpen()"
+                  [disabled]="!isMyTurn || wildPickerOpen() || gameIsFinished"
                 >
                   <app-uno-card [card]="c" size="md"></app-uno-card>
                 </button>
@@ -185,12 +255,6 @@
             </div>
           </div>
         </div>
-      </div>
-    }
-
-    @if (session()!.status === 'finished' && unoState?.winnerUserId !== null && unoState?.winnerUserId !== undefined) {
-      <div class="winnerBanner">
-        {{ winnerName() }} wins!
       </div>
     }
   } @else {
