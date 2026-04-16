@@ -51,16 +51,6 @@ class User extends Authenticatable
         ];
     }
 
-    public function books(): BelongsToMany
-    {
-        return $this->belongsToMany(Book::class, 'user_book_checkouts', 'user_id', 'book_id');
-    }
-
-    public function checkouts(): BelongsToMany
-    {
-        return $this->belongsToMany(Checkout::class, 'user_book_checkouts', 'user_id', 'checkout_id')->withPivot('book_id');
-    }
-
     public function tokens(): MorphMany
     {
         return $this->morphMany(PersonalAccessToken::class, 'tokenable');

@@ -21,11 +21,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->booted(function () {
-            $schedule = $this->app->make(Schedule::class);
-            // Schedule overdue books email - change frequency as needed (currently every minute for testing)
-            $schedule->command('auto:overdue-books --email=johnchristiansen@gmail.com')
-                ->everyMinute();
-                // ->weekly(); // Uncomment for production
+            $this->app->make(Schedule::class);
         });
     }
 }

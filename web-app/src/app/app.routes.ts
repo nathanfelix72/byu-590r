@@ -37,11 +37,5 @@ export const routes: Routes = [
         (m) => m.ResetPasswordComponent
       ),
   },
-  {
-    path: 'books',
-    loadComponent: () =>
-      import('./books/books.component').then((m) => m.BooksComponent),
-    canActivate: [authGuard],
-  },
   { path: '**', redirectTo: '/login' },
 ];

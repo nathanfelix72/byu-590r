@@ -18,12 +18,6 @@ class DatabaseSeeder extends Seeder
             GameSeeder::class,
             ProfileSeeder::class,
             GenreSeeder::class,
-            AuthorSeeder::class,
-            PhoneSeeder::class,
-            BooksSeeder::class,
-            AuthorPhonesSeeder::class,
-            AuthorBooksSeeder::class,
-            PageSeeder::class,
             GameSessionSeeder::class,
         ]);
     }

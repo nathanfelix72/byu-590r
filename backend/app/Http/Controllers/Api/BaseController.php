@@ -47,7 +47,7 @@ class BaseController extends Controller
             return null;
         }
 
-        // Local: serve from storage/app/public (e.g. demo images from backend/public/assets/books)
+        // Local: serve from storage/app/public when images are stored locally.
         if ($this->useLocalStorageForImages()) {
             if (Storage::disk('public')->exists($path)) {
                 return asset('storage/' . $path);
