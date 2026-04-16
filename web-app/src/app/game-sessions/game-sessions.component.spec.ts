@@ -4,7 +4,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideMockStore } from '@ngrx/store/testing';
-import { provideEffects } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { GameSessionsComponent } from './game-sessions.component';
 import {
@@ -13,7 +12,6 @@ import {
 } from '../core/services/game-session.service';
 import { GamesService } from '../core/services/games.service';
 import { AuthStore } from '../core/stores/auth.store';
-import { GameSessionsEffects } from '../state/game-sessions/game-sessions.effects';
 
 class MockGameSessionService {
   private sessions: GameSession[] = [
@@ -147,7 +145,6 @@ describe('GameSessionsComponent', () => {
             },
           },
         }),
-        provideEffects([GameSessionsEffects]),
         { provide: GameSessionService, useClass: MockGameSessionService },
         { provide: GamesService, useClass: MockGamesService },
         { provide: AuthStore, useValue: mockAuth },
