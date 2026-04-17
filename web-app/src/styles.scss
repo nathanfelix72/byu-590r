@@ -220,3 +220,64 @@ body {
   }
 }
 
+.coverImageOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.coverImageOverlay__panel {
+  max-width: min(96vw, 720px);
+  max-height: min(90vh, 860px);
+  background: var(--surface-elevated);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.coverImageOverlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.coverImageOverlay__title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.coverImageOverlay__close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 8px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--border-muted) 40%, transparent);
+    color: var(--text-primary);
+  }
+}
+
+.coverImageOverlay__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(78vh, 760px);
+  object-fit: contain;
+  background: #111;
+}
+

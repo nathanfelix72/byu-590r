@@ -27,19 +27,45 @@ class UnoEngine
 
         $rules = array_merge($this->defaultRules(), $rules);
 
-        // Start discard (optionally applying action effects based on rules)
+        // Start discard: first "real" up-card cannot be +2 / +4 (draw2 / wild_draw4).
+        // Wild draw4 is skipped while searching; colored draw2 is put back under the deck.
         $discard = [];
-        while (!empty($deck)) {
+        $currentColor = null;
+        $currentValue = null;
+        $safety = 0;
+        while (!empty($deck) && $safety < 500) {
+            $safety++;
             $card = array_pop($deck);
-            $discard[] = $card;
-            if ($card['color'] !== 'w') {
-                $currentColor = $card['color'];
-                $currentValue = $card['value'];
-                break;
+            $color = $card['color'] ?? '';
+            $value = $card['value'] ?? '';
+
+            if ($color === 'w') {
+                if ($value === 'wild_draw4') {
+                    array_unshift($deck, $card);
+
+                    continue;
+                }
+                $discard[] = $card;
+
+                continue;
             }
+
+            if ($value === 'draw2') {
+                array_unshift($deck, $card);
+
+                continue;
+            }
+
+            $discard[] = $card;
+            $currentColor = $color;
+            $currentValue = $value;
+            break;
         }
 
         $top = end($discard);
+        if ($top === false) {
+            throw new \RuntimeException('Could not start discard pile.');
+        }
         $currentColor = $currentColor ?? ($top['color'] === 'w' ? 'r' : $top['color']);
         $currentValue = $currentValue ?? $top['value'];
 

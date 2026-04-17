@@ -10,6 +10,7 @@ export interface GameSessionPlayerPivot {
   score?: number;
   seat?: number | null;
   is_ready?: boolean;
+  is_ai?: boolean;
   /** Present only for the authenticated user’s row; hidden for other players. */
   chat_muted?: boolean;
   left_at?: string | null;
@@ -57,6 +58,8 @@ export interface GameSession {
   game_session_background_picture?: string | null;
   status: string;
   current_turn: number | null;
+  /** Set when the host starts the game (status becomes in_progress). */
+  started_at?: string | null;
   join_code?: string | null;
   state?: any;
   version?: number;
@@ -199,6 +202,18 @@ export class GameSessionService {
     );
   }
 
+  playAgain(id: number): Observable<{
+    success: boolean;
+    results: { session: GameSession; new_session_id: number | null };
+    message: string;
+  }> {
+    return this.http.post<{
+      success: boolean;
+      results: { session: GameSession; new_session_id: number | null };
+      message: string;
+    }>(`${this.apiUrl}game-sessions/${id}/play-again`, {}, { headers: this.getAuthHeaders() });
+  }
+
   makeMove(
     id: number,
     move: { type: string; payload?: any; clientVersion: number }
@@ -246,24 +261,12 @@ export class GameSessionService {
     );
   }
 
-  updateGameSessionBackground(
-    id: number,
-    backgroundUrl: string
-  ): Observable<{ success: boolean; results: GameSession; message: string }> {
-    return this.http.patch<{ success: boolean; results: GameSession; message: string }>(
-      `${this.apiUrl}game-sessions/${id}`,
-      { game_session_background_picture: backgroundUrl },
-      { headers: this.getAuthHeaders() }
-    );
-  }
-
   updateGameSession(
     id: number,
     payload: {
       name?: string;
       description?: string;
       game_id?: number;
-      game_session_background_picture?: string | null;
       notes?: string | null;
       max_players_cap?: number | null;
       tag_ids?: number[];

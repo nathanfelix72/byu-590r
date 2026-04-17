@@ -91,6 +91,8 @@ export class GameSessionsComponent implements OnInit {
   createOpen = signal(false);
   joinOpen = signal(false);
   isGeneratingImage = signal(false);
+  coverPreviewUrl = signal<string | null>(null);
+  coverPreviewTitle = signal('');
 
   readonly defaultCoverImage =
     'data:image/svg+xml,%3Csvg%20width=%22400%22%20height=%22300%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22grad1%22%20x1=%220%25%22%20y1=%220%25%22%20x2=%22100%25%22%20y2=%22100%25%22%3E%3Cstop%20offset=%220%25%22%20style=%22stop-color:%23667eea;stop-opacity:1%22%20/%3E%3Cstop%20offset=%22100%25%22%20style=%22stop-color:%23764ba2;stop-opacity:1%22%20/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%22400%22%20height=%22300%22%20fill=%22url(%23grad1)%22/%3E%3Ccircle%20cx=%2280%22%20cy=%2280%22%20r=%2240%22%20fill=%22%23FF6B6B%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%22320%22%20cy=%2280%22%20r=%2240%22%20fill=%22%234ECDC4%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%2280%22%20cy=%22220%22%20r=%2240%22%20fill=%22%23FFE66D%22%20opacity=%220.8%22/%3E%3Ccircle%20cx=%22320%22%20cy=%22220%22%20r=%2240%22%20fill=%22%2395E1D3%22%20opacity=%220.8%22/%3E%3Ctext%20x=%22200%22%20y=%22150%22%20font-size=%2232%22%20font-weight=%22bold%22%20fill=%22white%22%20text-anchor=%22middle%22%20dominant-baseline=%22middle%22%3EGame%20Session%3C/text%3E%3C/svg%3E';
@@ -204,7 +206,8 @@ export class GameSessionsComponent implements OnInit {
         tag_ids: value.tag_ids?.length ? value.tag_ids : undefined,
       })
       .subscribe({
-        next: () => {
+        next: (res) => {
+          const created = res.results;
           this.snackBar.open('Session created with generated images!', 'Close', {
             duration: 3000,
           });
@@ -219,6 +222,9 @@ export class GameSessionsComponent implements OnInit {
           });
           this.isGeneratingImage.set(false);
           this.store.dispatch(gameSessionsActions.loadMySessions());
+          if (created?.id) {
+            void this.router.navigate(['/lobby', created.id]);
+          }
         },
         error: (err) => {
           this.snackBar.open(
@@ -242,11 +248,15 @@ export class GameSessionsComponent implements OnInit {
     }
 
     this.gameSessionService.joinGameSessionByCode(joinCode).subscribe({
-      next: () => {
+      next: (res) => {
+        const joined = res.results;
         this.snackBar.open('Joined session', 'Close', { duration: 3000 });
         this.joinOpen.set(false);
         this.joinForm.reset();
         this.store.dispatch(gameSessionsActions.loadMySessions());
+        if (joined?.id) {
+          void this.router.navigate(['/lobby', joined.id]);
+        }
       },
       error: (err) => {
         this.snackBar.open(err?.error?.message || 'Failed to join', 'Close', {
@@ -352,5 +362,18 @@ export class GameSessionsComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  openCoverPreview(session: GameSession, ev: Event): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const url = session.game_session_cover_picture || this.defaultCoverImage;
+    this.coverPreviewTitle.set(session.name);
+    this.coverPreviewUrl.set(url);
+  }
+
+  closeCoverPreview(): void {
+    this.coverPreviewUrl.set(null);
+    this.coverPreviewTitle.set('');
   }
 }

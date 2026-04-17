@@ -7,11 +7,24 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { GameSessionService, GameSession } from '../core/services/game-session.service';
+import { GamesService, Game, GameTag } from '../core/services/games.service';
 import { UserService } from '../core/services/user.service';
 import { RealtimeService } from '../core/services/realtime.service';
+import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
+import { EditSessionDialogComponent } from '../game-sessions/edit-session-dialog/edit-session-dialog.component';
 
 type SortKey = 'name' | 'status' | 'players';
+
+export type OpponentStatRow = {
+  userId: number;
+  name: string;
+  gamesTogether: number;
+  yourWins: number;
+  theirWins: number;
+};
 
 @Component({
   selector: 'app-home',
@@ -23,6 +36,8 @@ type SortKey = 'name' | 'status' | 'players';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatDialogModule,
+    MatSnackBarModule,
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
@@ -31,11 +46,16 @@ export class HomeComponent {
   authStore = inject(AuthStore);
   userStore = inject(UserStore);
   private gameSessionService = inject(GameSessionService);
+  private gamesService = inject(GamesService);
   private userService = inject(UserService);
   private realtime = inject(RealtimeService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
   router = inject(Router);
 
   sessions = signal<GameSession[]>([]);
+  games = signal<Game[]>([]);
+  tags = signal<GameTag[]>([]);
   search = signal('');
   sortKey = signal<SortKey>('name');
   sortDir = signal<1 | -1>(1);
@@ -50,6 +70,62 @@ export class HomeComponent {
     const dir = this.sortDir();
     list.sort((a, b) => dir * this.compareSessions(a, b, key));
     return list;
+  });
+
+  gamesPlayed = computed(() => {
+    const user = this.userStore.user();
+    const uid = user?.id;
+    if (uid === undefined || uid === null) {
+      return 0;
+    }
+    return this.sessions().filter((s) => s.status === 'finished' && this.didUserParticipate(s, uid)).length;
+  });
+
+  uniqueOpponents = computed(() => this.opponentLeaderboard().length);
+
+  opponentLeaderboard = computed((): OpponentStatRow[] => {
+    const uid = this.userStore.user()?.id;
+    if (uid === undefined || uid === null) {
+      return [];
+    }
+    const map = new Map<number, OpponentStatRow>();
+
+    for (const s of this.sessions()) {
+      if (s.status !== 'finished' || !this.didUserParticipate(s, uid)) {
+        continue;
+      }
+      const winnerId = this.getWinnerUserId(s);
+      const others = (s.players || []).filter(
+        (p) => !p.left_at && Number(p.user_id) !== Number(uid)
+      );
+      for (const p of others) {
+        const oid = Number(p.user_id);
+        const name = p.user?.name || `Player ${oid}`;
+        if (!map.has(oid)) {
+          map.set(oid, {
+            userId: oid,
+            name,
+            gamesTogether: 0,
+            yourWins: 0,
+            theirWins: 0,
+          });
+        }
+        const row = map.get(oid)!;
+        row.gamesTogether += 1;
+        if (row.name.startsWith('Player ') && name && !name.startsWith('Player ')) {
+          row.name = name;
+        }
+        if (winnerId !== null) {
+          if (Number(winnerId) === Number(uid)) {
+            row.yourWins += 1;
+          } else if (Number(winnerId) === oid) {
+            row.theirWins += 1;
+          }
+        }
+      }
+    }
+
+    return [...map.values()].sort((a, b) => b.gamesTogether - a.gamesTogether);
   });
 
   stats = computed(() => {
@@ -99,6 +175,73 @@ export class HomeComponent {
   constructor() {
     this.refreshUserProfile();
     this.loadRecentSessions();
+    this.loadGamesAndTags();
+  }
+
+  private loadGamesAndTags(): void {
+    this.gamesService.getGames().subscribe({
+      next: (res) => this.games.set(res.results || []),
+      error: () => this.games.set([]),
+    });
+    this.gamesService.getTags().subscribe({
+      next: (res) => this.tags.set(res.results || []),
+      error: () => this.tags.set([]),
+    });
+  }
+
+  isHost(session: GameSession): boolean {
+    const uid = this.authStore.user()?.id;
+    return uid != null && Number(session.host_user_id) === Number(uid);
+  }
+
+  openEdit(session: GameSession): void {
+    this.dialog
+      .open(EditSessionDialogComponent, {
+        width: 'min(100vw - 32px, 480px)',
+        data: {
+          session,
+          games: this.games(),
+          tags: this.tags(),
+        },
+      })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) {
+          this.snackBar.open('Session updated', 'Close', { duration: 3000 });
+          this.loadRecentSessions();
+        }
+      });
+  }
+
+  deleteSession(sessionId: number, sessionName: string): void {
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Delete session',
+          message: `Are you sure you want to delete "${sessionName}"? This action cannot be undone.`,
+          confirmText: 'Delete',
+          confirmColor: 'warn',
+        },
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        this.gameSessionService.deleteGameSession(sessionId).subscribe({
+          next: () => {
+            this.snackBar.open('Session deleted', 'Close', { duration: 3000 });
+            this.loadRecentSessions();
+          },
+          error: (err) => {
+            this.snackBar.open(
+              err?.error?.message || 'Failed to delete session',
+              'Close',
+              { duration: 5000 }
+            );
+          },
+        });
+      });
   }
 
   onSearchInput(ev: Event): void {
@@ -189,6 +332,7 @@ export class HomeComponent {
       s.name,
       s.status,
       this.playerLine(s),
+      s.started_at ?? '',
     ]
       .join(' ')
       .toLowerCase();

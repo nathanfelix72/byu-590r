@@ -13,9 +13,17 @@
           @if (session()!.join_code) {
             <span class="code"> · Join code: {{ session()!.join_code }}</span>
           }
+          @if (session()!.started_at) {
+            <span class="code">
+              · Started: <strong>{{ session()!.started_at | date: 'medium' }}</strong>
+            </span>
+          }
         </div>
       </div>
       <div class="actions">
+        @if (session()!.game_session_cover_picture) {
+          <button mat-stroked-button type="button" (click)="openSessionCover()">View cover</button>
+        }
         <button mat-stroked-button (click)="refresh()">Refresh</button>
         <button mat-stroked-button color="warn" (click)="leave()">Leave</button>
         @if (isHost && session()!.status === 'waiting') {
@@ -30,7 +38,35 @@
       unoState?.winnerUserId !== undefined
     ) {
       <div class="gameOverBanner" role="status">
-        Game over · <strong>{{ winnerName() }}</strong> wins
+        <div class="gameOverBanner__row">
+          <span>Game over · <strong>{{ winnerName() }}</strong> wins</span>
+          @if (rematchSessionId()) {
+            <a mat-stroked-button [routerLink]="['/lobby', rematchSessionId()!]">
+              Open rematch lobby
+            </a>
+          } @else if (playAgainTotal() > 0) {
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="playAgain()"
+              [disabled]="playAgainSubmitting() || hasPlayAgainVote()"
+            >
+              @if (playAgainSubmitting()) {
+                …
+              } @else if (hasPlayAgainVote()) {
+                Waiting {{ playAgainCount() }}/{{ playAgainTotal() }} players
+              } @else {
+                Play again ({{ playAgainCount() }}/{{ playAgainTotal() }})
+              }
+            </button>
+          }
+        </div>
+        @if (!rematchSessionId() && playAgainTotal() > 0) {
+          <p class="gameOverBanner__hint muted">
+            Everyone must tap Play again to start a new lobby with the same players.
+          </p>
+        }
       </div>
     }
 
@@ -260,6 +296,26 @@
   } @else {
     <div class="card">
       <div class="card__content">Loading…</div>
+    </div>
+  }
+
+  @if (coverPreviewUrl()) {
+    <div
+      class="coverImageOverlay"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'Cover: ' + coverPreviewTitle()"
+      (click)="closeCoverPreview()"
+    >
+      <div class="coverImageOverlay__panel" (click)="$event.stopPropagation()">
+        <div class="coverImageOverlay__header">
+          <span class="coverImageOverlay__title">{{ coverPreviewTitle() }}</span>
+          <button type="button" class="coverImageOverlay__close" (click)="closeCoverPreview()" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <img class="coverImageOverlay__img" [src]="coverPreviewUrl()!" [alt]="'Cover for ' + coverPreviewTitle()" />
+      </div>
     </div>
   }
 </section>

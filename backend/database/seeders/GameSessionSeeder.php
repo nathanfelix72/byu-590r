@@ -20,6 +20,7 @@ class GameSessionSeeder extends Seeder
                 'game_session_cover_picture' => 'images/uno_friends.jpg',
                 'status' => 'in_progress',
                 'current_turn' => 0,
+                'started_at' => Carbon::now()->subHours(2),
             ],
             [
                 'name' => 'Late Night Uno',
@@ -34,6 +35,7 @@ class GameSessionSeeder extends Seeder
                 'game_session_cover_picture' => 'images/uno_family_night.jpg',
                 'status' => 'in_progress',
                 'current_turn' => 1,
+                'started_at' => Carbon::now()->subDays(1),
             ],
             [
                 'name' => 'Speed Uno',
@@ -41,6 +43,7 @@ class GameSessionSeeder extends Seeder
                 'game_session_cover_picture' => 'images/uno_speed.jpg',
                 'status' => 'finished',
                 'current_turn' => null,
+                'started_at' => Carbon::now()->subDays(3),
             ],
             [
                 'name' => 'Tournament Bracket',

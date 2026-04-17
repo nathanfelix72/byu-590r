@@ -72,7 +72,6 @@ export class EditSessionDialogComponent {
     notes: ['', [Validators.maxLength(2000)]],
     max_players_cap: [null as number | null, [optionalRoomSize]],
     tag_ids: [[] as number[]],
-    game_session_background_picture: ['', [Validators.maxLength(2048)]],
   });
 
   constructor() {
@@ -84,7 +83,6 @@ export class EditSessionDialogComponent {
       notes: s.detail?.notes ?? '',
       max_players_cap: s.detail?.max_players_cap ?? null,
       tag_ids: s.tags?.map((t) => t.id) ?? [],
-      game_session_background_picture: s.game_session_background_picture ?? '',
     });
   }
 
@@ -99,7 +97,6 @@ export class EditSessionDialogComponent {
     }
     const v = this.form.getRawValue();
     this.saving = true;
-    const bg = (v.game_session_background_picture || '').trim();
     const capRaw = v.max_players_cap as number | null | undefined;
     const maxPlayersCap =
       capRaw === null || capRaw === undefined ? null : Number(capRaw);
@@ -110,7 +107,6 @@ export class EditSessionDialogComponent {
       notes: (v.notes || '').trim() || null,
       max_players_cap: maxPlayersCap,
       tag_ids: v.tag_ids ?? [],
-      ...(bg ? { game_session_background_picture: bg } : {}),
     };
     if (this.data.session.status === 'waiting' && v.game_id != null) {
       payload.game_id = v.game_id;

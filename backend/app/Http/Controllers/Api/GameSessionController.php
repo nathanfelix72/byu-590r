@@ -181,47 +181,26 @@ class GameSessionController extends BaseController
 
         try {
             return DB::transaction(function () use ($request, $userId, $imageGenerationService) {
-                $session = GameSession::create([
-                    'game_id' => (int) $request->input('game_id'),
-                    'host_user_id' => $userId,
-                    'name' => $request->input('name'),
-                    'description' => $request->input('description') ?? '',
-                    'game_session_cover_picture' => null,
-                    'game_session_background_picture' => null,
-                    'status' => 'waiting',
-                    'current_turn' => null,
-                    'join_code' => $this->generateJoinCode(),
-                    'state' => null,
-                    'version' => 0,
-                ]);
-
-                $prompt = $this->buildImagePrompt((string) $session->name, (string) $session->description);
-                $coverPath = $imageGenerationService->generateAndStoreImage($prompt, 'game_cover', (int) $session->id);
-                $backgroundPath = $imageGenerationService->generateAndStoreImage($prompt, 'uno_background', (int) $session->id);
-
-                $session->game_session_cover_picture = $coverPath;
-                $session->game_session_background_picture = $backgroundPath;
-                $session->save();
-
-                UserGameSession::create([
-                    'user_id' => $userId,
-                    'game_session_id' => $session->id,
-                    'seat' => 0,
-                    'score' => 0,
-                    'is_ready' => true,
-                    'is_ai' => false,
-                ]);
-
-                GameSessionDetail::create([
-                    'game_session_id' => $session->id,
-                    'notes' => $request->input('notes'),
-                    'max_players_cap' => $request->input('max_players_cap'),
-                ]);
-
-                if ($request->has('tag_ids') && is_array($request->input('tag_ids'))) {
-                    $tagIds = array_values(array_unique(array_map('intval', $request->input('tag_ids'))));
-                    $session->tags()->sync($tagIds);
-                }
+                $session = $this->provisionNewGameSession(
+                    (int) $request->input('game_id'),
+                    (int) $userId,
+                    (string) $request->input('name'),
+                    (string) ($request->input('description') ?? ''),
+                    $request->input('notes'),
+                    $request->input('max_players_cap'),
+                    $request->has('tag_ids') && is_array($request->input('tag_ids'))
+                        ? array_values(array_unique(array_map('intval', $request->input('tag_ids'))))
+                        : [],
+                    [
+                        [
+                            'user_id' => (int) $userId,
+                            'seat' => 0,
+                            'is_ready' => true,
+                            'is_ai' => false,
+                        ],
+                    ],
+                    $imageGenerationService
+                );
 
                 $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
                 event(new GameSessionUpdated($session->id));
@@ -269,7 +248,6 @@ class GameSessionController extends BaseController
             'name' => 'sometimes|required|string|min:2|max:80',
             'description' => 'nullable|string|max:500',
             'game_id' => 'sometimes|required|exists:games,id',
-            'game_session_background_picture' => 'nullable|string|url|max:2048',
             'notes' => 'nullable|string|max:2000',
             'max_players_cap' => 'nullable|integer|min:2|max:20',
             'tag_ids' => 'sometimes|array',
@@ -292,9 +270,6 @@ class GameSessionController extends BaseController
         }
         if ($request->has('description')) {
             $session->description = (string) $request->input('description');
-        }
-        if ($request->has('game_session_background_picture')) {
-            $session->game_session_background_picture = $request->input('game_session_background_picture');
         }
 
         $detailInput = [];
@@ -515,6 +490,7 @@ class GameSessionController extends BaseController
             $session->state = $this->uno->initState($userIds, is_array($session->rules) ? $session->rules : []);
         }
         $session->status = 'in_progress';
+        $session->started_at = now();
         $session->current_turn = 0;
         $session->version = (int) $session->version + 1;
         $session->save();
@@ -522,6 +498,141 @@ class GameSessionController extends BaseController
         $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
         event(new GameSessionUpdated($session->id));
         return $this->sendResponse($this->presentSessionForUser($session, (int) $userId), 'Session started');
+    }
+
+    /**
+     * Record a "play again" vote after a finished game. When every human player has voted,
+     * a new waiting session is created with the same roster (non-AI).
+     */
+    public function playAgain($id)
+    {
+        /** @var int $userId */
+        $userId = auth()->id();
+
+        return DB::transaction(function () use ($id, $userId) {
+            /** @var GameSession|null $session */
+            $session = GameSession::lockForUpdate()->with(['players', 'detail', 'tags'])->find($id);
+            if (!$session) {
+                return $this->sendError('Not found.', ['error' => 'Game session not found'], 404);
+            }
+
+            $isMember = $session->players()->where('user_id', $userId)->whereNull('left_at')->exists();
+            if (!$isMember) {
+                return $this->sendError('Forbidden.', ['error' => 'Not a member of this session'], 403);
+            }
+
+            if ($session->status !== 'finished') {
+                return $this->sendError('Conflict.', ['error' => 'Play again is only available after the game ends'], 409);
+            }
+
+            $state = $session->state;
+            if (!is_array($state) || ($state['type'] ?? null) !== 'uno') {
+                return $this->sendError('Conflict.', ['error' => 'Play again is not available for this session'], 409);
+            }
+
+            if (($state['rematch_session_id'] ?? null) !== null) {
+                return $this->sendError('Conflict.', ['error' => 'A rematch session already exists'], 409);
+            }
+
+            $humanRows = $session->players()
+                ->whereNull('left_at')
+                ->where('is_ai', false)
+                ->orderBy('seat')
+                ->get();
+
+            if ($humanRows->isEmpty()) {
+                return $this->sendError('Conflict.', ['error' => 'No human players in this session'], 409);
+            }
+
+            $humanUserIds = $humanRows->pluck('user_id')->map(fn ($x) => (int) $x)->values()->all();
+            if (!in_array((int) $userId, $humanUserIds, true)) {
+                return $this->sendError('Forbidden.', ['error' => 'Only participating human players can vote'], 403);
+            }
+
+            $votes = $state['playAgainUserIds'] ?? [];
+            if (!is_array($votes)) {
+                $votes = [];
+            }
+            $votes = array_values(array_unique(array_map('intval', $votes)));
+            $votes = array_values(array_filter($votes, fn ($uid) => in_array($uid, $humanUserIds, true)));
+            if (!in_array((int) $userId, $votes, true)) {
+                $votes[] = (int) $userId;
+            }
+            sort($votes);
+
+            $state['playAgainUserIds'] = $votes;
+            $session->state = $state;
+            $session->version = (int) $session->version + 1;
+
+            $allIn = count($votes) === count($humanUserIds) && empty(array_diff($humanUserIds, $votes));
+
+            if (!$allIn) {
+                $session->save();
+                $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
+                event(new GameSessionUpdated($session->id));
+                return $this->sendResponse([
+                    'session' => $this->presentSessionForUser($session, (int) $userId),
+                    'new_session_id' => null,
+                ], 'Play again vote recorded');
+            }
+
+            $imageGenerationService = app(ImageGenerationService::class);
+
+            $rematchName = $this->nextRematchSessionName((string) $session->name);
+
+            $tagIds = $session->tags->pluck('id')->map(fn ($x) => (int) $x)->values()->all();
+
+            $seatedPlayers = [];
+            foreach ($humanRows as $row) {
+                $seatedPlayers[] = [
+                    'user_id' => (int) $row->user_id,
+                    'seat' => (int) $row->seat,
+                    'is_ready' => true,
+                    'is_ai' => false,
+                ];
+            }
+
+            $reuseCover = $session->game_session_cover_picture;
+            $reuseBg = $session->game_session_background_picture;
+
+            try {
+                $newSession = $this->provisionNewGameSession(
+                    (int) $session->game_id,
+                    (int) $session->host_user_id,
+                    $rematchName,
+                    (string) $session->description,
+                    $session->detail?->notes,
+                    $session->detail?->max_players_cap,
+                    $tagIds,
+                    $seatedPlayers,
+                    $imageGenerationService,
+                    is_string($reuseCover) && $reuseCover !== '' ? $reuseCover : null,
+                    is_string($reuseBg) && $reuseBg !== '' ? $reuseBg : null
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Failed to create rematch session', [
+                    'error' => $e->getMessage(),
+                    'from_session_id' => $session->id,
+                ]);
+
+                return $this->sendError('Failed to create rematch', ['error' => 'Could not create the new session. Please try again.'], 500);
+            }
+
+            $state['rematch_session_id'] = (int) $newSession->id;
+            $session->state = $state;
+            $session->save();
+
+            $session->load(['game', 'host', 'players.user', 'detail', 'tags']);
+            event(new GameSessionUpdated($session->id));
+
+            $newSession->load(['game', 'host', 'players.user', 'detail', 'tags']);
+            event(new GameSessionUpdated($newSession->id));
+
+            return $this->sendResponse([
+                'session' => $this->presentSessionForUser($session, (int) $userId),
+                'new_session_id' => (int) $newSession->id,
+            ], 'Rematch created');
+        });
     }
 
     public function move(Request $request, $id)
@@ -768,6 +879,88 @@ class GameSessionController extends BaseController
             $prompt .= ' - ' . $description;
         }
         return $prompt;
+    }
+
+    /**
+     * Strip any trailing "— rematch" / "- rematch" segments so chained rematches stay "Title — rematch".
+     */
+    private function nextRematchSessionName(string $currentName): string
+    {
+        $base = trim(preg_replace('/(?:\s*[—-]\s*rematch)+$/iu', '', trim($currentName)));
+
+        return $base . ' — rematch';
+    }
+
+    /**
+     * @param  list<int>  $tagIds
+     * @param  list<array{user_id: int, seat: int, is_ready: bool, is_ai?: bool}>  $seatedPlayers
+     */
+    private function provisionNewGameSession(
+        int $gameId,
+        int $hostUserId,
+        string $name,
+        string $description,
+        mixed $notes,
+        mixed $maxPlayersCap,
+        array $tagIds,
+        array $seatedPlayers,
+        ImageGenerationService $imageGenerationService,
+        ?string $reuseCoverPath = null,
+        ?string $reuseBackgroundPath = null
+    ): GameSession {
+        $session = GameSession::create([
+            'game_id' => $gameId,
+            'host_user_id' => $hostUserId,
+            'name' => $name,
+            'description' => $description,
+            'game_session_cover_picture' => null,
+            'game_session_background_picture' => null,
+            'status' => 'waiting',
+            'current_turn' => null,
+            'join_code' => $this->generateJoinCode(),
+            'state' => null,
+            'version' => 0,
+        ]);
+
+        $sid = (int) $session->id;
+        $reuseBoth = $reuseCoverPath !== null && $reuseCoverPath !== ''
+            && $reuseBackgroundPath !== null && $reuseBackgroundPath !== '';
+
+        if ($reuseBoth) {
+            $coverPath = $imageGenerationService->duplicateStoredImage($reuseCoverPath, 'game_cover', $sid) ?? $reuseCoverPath;
+            $backgroundPath = $imageGenerationService->duplicateStoredImage($reuseBackgroundPath, 'uno_background', $sid) ?? $reuseBackgroundPath;
+        } else {
+            $prompt = $this->buildImagePrompt($name, $description);
+            $coverPath = $imageGenerationService->generateAndStoreImage($prompt, 'game_cover', $sid);
+            $backgroundPath = $imageGenerationService->generateAndStoreImage($prompt, 'uno_background', $sid);
+        }
+
+        $session->game_session_cover_picture = $coverPath;
+        $session->game_session_background_picture = $backgroundPath;
+        $session->save();
+
+        foreach ($seatedPlayers as $row) {
+            UserGameSession::create([
+                'user_id' => (int) $row['user_id'],
+                'game_session_id' => $session->id,
+                'seat' => (int) $row['seat'],
+                'score' => 0,
+                'is_ready' => (bool) $row['is_ready'],
+                'is_ai' => (bool) ($row['is_ai'] ?? false),
+            ]);
+        }
+
+        GameSessionDetail::create([
+            'game_session_id' => $session->id,
+            'notes' => $notes,
+            'max_players_cap' => $maxPlayersCap,
+        ]);
+
+        if ($tagIds !== []) {
+            $session->tags()->sync($tagIds);
+        }
+
+        return $session;
     }
 
     private function generateJoinCode(): string

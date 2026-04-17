@@ -95,24 +95,24 @@ export class AppComponent implements OnInit {
     return userName ? `Welcome ${userName}!` : 'Welcome!';
   }
 
-  isGameSessionsRoute(): boolean {
-    return this.router.url.startsWith('/game-sessions');
+  isLobbyRoute(): boolean {
+    return this.router.url.startsWith('/lobby');
   }
 
   /**
-   * Active / Completed / Create sub-nav only on the list page — hide on /game-sessions/:id (lobby or in play).
+   * Active / Completed / Create sub-nav only on the list page — hide on /lobby/:id (in a game).
    */
-  showGameSessionsSubNav(): boolean {
-    if (!this.isGameSessionsRoute()) return false;
+  showLobbySubNav(): boolean {
+    if (!this.isLobbyRoute()) return false;
     const path = this.router.url.split('?')[0].replace(/\/+$/, '') || '/';
-    return path === '/game-sessions';
+    return path === '/lobby';
   }
 
   /**
-   * Tab state for the game-sessions sub-nav. Defaults to Active when the URL has no
+   * Tab state for the lobby sub-nav. Defaults to Active when the URL has no
    * ?tab= (so highlighting matches the list view and routerLinkActive).
    */
-  gameSessionsListTab(): 'in-progress' | 'finished' | 'create' {
+  lobbyListTab(): 'in-progress' | 'finished' | 'create' {
     const tab = this.router.parseUrl(this.router.url).queryParams['tab'];
     if (tab === 'finished' || tab === 'create' || tab === 'in-progress') {
       return tab;

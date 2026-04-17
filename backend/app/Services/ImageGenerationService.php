@@ -62,6 +62,49 @@ class ImageGenerationService
     }
 
     /**
+     * Copy an existing stored image to a new path for another session (e.g. rematch without re-generating).
+     * Provider URLs are returned as-is. Returns null if the source file is missing.
+     */
+    public function duplicateStoredImage(?string $existingPath, string $type, int $forSessionId): ?string
+    {
+        if ($existingPath === null || $existingPath === '') {
+            return null;
+        }
+        if (str_starts_with($existingPath, 'http://') || str_starts_with($existingPath, 'https://')) {
+            return $existingPath;
+        }
+
+        $disk = $this->resolveStorageDisk();
+        if (! Storage::disk($disk)->exists($existingPath)) {
+            \Log::warning('duplicateStoredImage: source file not found', ['path' => $existingPath]);
+
+            return null;
+        }
+
+        $content = Storage::disk($disk)->get($existingPath);
+        if ($content === null || $content === '') {
+            return null;
+        }
+
+        $ext = pathinfo($existingPath, PATHINFO_EXTENSION) ?: 'png';
+        $filename = sprintf(
+            '%s_session%s_%s.%s',
+            $type,
+            $forSessionId,
+            Str::uuid()->toString(),
+            $ext
+        );
+        $newPath = 'generated-images/'.$filename;
+        $this->ensureStorageTargetReady($disk, 'generated-images');
+        $writeOptions = ($disk === 's3') ? [] : ['visibility' => 'public'];
+        if (Storage::disk($disk)->put($newPath, $content, $writeOptions) !== true) {
+            return null;
+        }
+
+        return $newPath;
+    }
+
+    /**
      * Resolve a stored path to a public/presigned URL for API responses.
      */
     public function storedPathToUrl(string $path): string

@@ -1,14 +1,10 @@
 <section class="page">
   <header class="page__header">
     <div>
-      <div class="page__title">Game sessions</div>
+      <div class="page__title">Lobby</div>
       <div class="page__subtitle">
         Keep momentum across your active games and quickly start the next one.
       </div>
-    </div>
-    <div class="headerActions">
-      <button class="btn btn--secondary" (click)="openJoin()">Join Session</button>
-      <button class="btn btn--primary" (click)="openCreate()">Create Session</button>
     </div>
   </header>
 
@@ -29,12 +25,12 @@
         @if (inProgressSessions().length === 0) {
           <div class="empty-state">
             <p>No active games right now.</p>
-            <button class="btn btn--secondary" (click)="openCreate()">Create one now</button>
+            <button class="btn btn--secondary" (click)="openCreate()">Let’s play</button>
           </div>
         } @else {
           @for (session of inProgressSessions(); track session.id) {
             <div class="sessionCard" [class.sessionCard--waiting]="session.status === 'waiting'" [class.sessionCard--in-progress]="session.status === 'in_progress'">
-              <a [routerLink]="['/game-sessions', session.id]" class="sessionCard__link">
+              <a [routerLink]="['/lobby', session.id]" class="sessionCard__link">
                 <div class="sessionCard__surface">
                   <div class="sessionCard__cover" [style.--cover-bg]="getCoverBgColor(session.id)">
                     <img
@@ -59,6 +55,11 @@
                       <div class="sessionCard__createdBy">
                         Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
                       </div>
+                      @if (session.started_at) {
+                        <div class="sessionCard__started">
+                          Started {{ session.started_at | date: 'medium' }}
+                        </div>
+                      }
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}
                       </div>
@@ -77,6 +78,14 @@
                   </div>
                 </div>
               </a>
+              <button
+                type="button"
+                class="sessionCard__viewCover"
+                (click)="openCoverPreview(session, $event)"
+                title="View cover image"
+              >
+                View cover
+              </button>
               @if (isHost(session)) {
                 <button
                   type="button"
@@ -110,7 +119,7 @@
         } @else {
           @for (session of finishedSessions(); track session.id) {
             <div class="sessionCard sessionCard--finished">
-              <a [routerLink]="['/game-sessions', session.id]" class="sessionCard__link">
+              <a [routerLink]="['/lobby', session.id]" class="sessionCard__link">
                 <div class="sessionCard__surface">
                   <div class="sessionCard__cover" [style.--cover-bg]="getCoverBgColor(session.id)">
                     <img
@@ -135,6 +144,11 @@
                       <div class="sessionCard__createdBy">
                         Created by {{ session.host?.name || ('Player ' + session.host_user_id) }}
                       </div>
+                      @if (session.started_at) {
+                        <div class="sessionCard__started">
+                          Started {{ session.started_at | date: 'medium' }}
+                        </div>
+                      }
                       <div class="sessionCard__players">
                         <strong>Players:</strong> {{ getPlayerNames(session) }}
                       </div>
@@ -153,6 +167,14 @@
                   </div>
                 </div>
               </a>
+              <button
+                type="button"
+                class="sessionCard__viewCover"
+                (click)="openCoverPreview(session, $event)"
+                title="View cover image"
+              >
+                View cover
+              </button>
               @if (isHost(session)) {
                 <button
                   type="button"
@@ -180,14 +202,18 @@
     @if (selectedTab() === 'create') {
       <div class="panel-container">
         <div class="actions actions--carded">
-          <button class="btn btn--secondary" (click)="openJoin()">Join Session</button>
-          <button class="btn btn--primary" (click)="openCreate()">Create New Session</button>
+          <button class="btn btn--secondary" (click)="openJoin()">Join session</button>
+          <button class="btn btn--primary" (click)="openCreate()">Let’s play</button>
         </div>
 
         @if (createOpen()) {
           <div class="panel card">
-            <div class="card__title">Create session</div>
+            <div class="card__title">Let’s play</div>
             <div class="card__content">
+              <p class="muted aiImageHint">
+                Name, description, and tags are sent to the image generator — this will influence the AI cover and
+                board art.
+              </p>
               <form [formGroup]="createForm" class="form form--material">
                 <mat-form-field appearance="outline" class="form__full">
                   <mat-label>Game</mat-label>
@@ -215,6 +241,7 @@
                 <mat-form-field appearance="outline" class="form__full">
                   <mat-label>Description</mat-label>
                   <textarea matInput formControlName="description" rows="2"></textarea>
+                  <mat-hint>This will influence the AI-generated cover and table background.</mat-hint>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="form__full">
@@ -241,7 +268,7 @@
                       <mat-option [value]="t.id">{{ t.name }}</mat-option>
                     }
                   </mat-select>
-                  <mat-hint>Multi-select — pick one or more</mat-hint>
+                  <mat-hint>Tags also influence the AI art for this room.</mat-hint>
                 </mat-form-field>
 
                 <div class="form__footer">
@@ -258,7 +285,7 @@
                       <mat-spinner diameter="20" class="btn-spinner" />
                       <span>Generating…</span>
                     } @else {
-                      <span>Create</span>
+                      <span>Let’s play</span>
                     }
                   </button>
                 </div>
@@ -297,5 +324,25 @@
       </div>
     }
   </div>
+
+  @if (coverPreviewUrl()) {
+    <div
+      class="coverImageOverlay"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'Cover: ' + coverPreviewTitle()"
+      (click)="closeCoverPreview()"
+    >
+      <div class="coverImageOverlay__panel" (click)="$event.stopPropagation()">
+        <div class="coverImageOverlay__header">
+          <span class="coverImageOverlay__title">{{ coverPreviewTitle() }}</span>
+          <button type="button" class="coverImageOverlay__close" (click)="closeCoverPreview()" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <img class="coverImageOverlay__img" [src]="coverPreviewUrl()!" [alt]="'Cover for ' + coverPreviewTitle()" />
+      </div>
+    </div>
+  }
 </section>
 

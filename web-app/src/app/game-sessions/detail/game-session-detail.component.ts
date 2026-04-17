@@ -79,6 +79,10 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
   isLoading = signal(false);
   unoBackgroundImage = signal<string | null>(null);
   private lastWinnerSeen = signal<number | null>(null);
+  coverPreviewUrl = signal<string | null>(null);
+  coverPreviewTitle = signal('');
+  playAgainSubmitting = signal(false);
+  private lastRematchNavigationKey = signal<string | null>(null);
   containerWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 800);
 
   /** Hidden after you play/draw; resets when it’s not your turn so the next your-turn shows again. */
@@ -148,6 +152,21 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
       if (this.session()?.status === 'finished') {
         this.pendingWildCardIndex.set(null);
       }
+    });
+
+    effect(() => {
+      const sid = this.sessionId();
+      const st: any = this.session()?.state;
+      const rid = st?.rematch_session_id;
+      if (typeof rid !== 'number' || rid <= 0 || rid === sid) {
+        return;
+      }
+      const key = `${sid}->${rid}`;
+      if (this.lastRematchNavigationKey() === key) {
+        return;
+      }
+      this.lastRematchNavigationKey.set(key);
+      void this.router.navigate(['/lobby', rid]);
     });
   }
 
@@ -728,6 +747,77 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
     return this.nameForUserId(Number(winnerId));
   }
 
+  playAgainTotal(): number {
+    return this.humanLobbyPlayers().length;
+  }
+
+  playAgainCount(): number {
+    const ids = this.unoState?.playAgainUserIds;
+    if (!Array.isArray(ids)) return 0;
+    return ids.length;
+  }
+
+  hasPlayAgainVote(): boolean {
+    const uid = this.myUserId;
+    if (uid === null) return false;
+    const ids = this.unoState?.playAgainUserIds;
+    if (!Array.isArray(ids)) return false;
+    return ids.some((x: unknown) => Number(x) === Number(uid));
+  }
+
+  rematchSessionId(): number | null {
+    const raw = this.unoState?.rematch_session_id;
+    return typeof raw === 'number' && raw > 0 ? raw : null;
+  }
+
+  private humanLobbyPlayers(): { user_id: number; is_ai?: boolean; left_at?: string | null }[] {
+    return this.activeLobbyPlayers().filter(
+      (p: { is_ai?: boolean }) => p.is_ai !== true
+    );
+  }
+
+  openSessionCover(): void {
+    const s = this.session();
+    const url = s?.game_session_cover_picture;
+    if (!url) return;
+    this.coverPreviewTitle.set(s?.name ?? 'Session');
+    this.coverPreviewUrl.set(url);
+  }
+
+  closeCoverPreview(): void {
+    this.coverPreviewUrl.set(null);
+    this.coverPreviewTitle.set('');
+  }
+
+  playAgain(): void {
+    const id = this.sessionId();
+    if (!Number.isFinite(id) || id <= 0) return;
+    if (this.playAgainSubmitting()) return;
+    this.playAgainSubmitting.set(true);
+    this.service.playAgain(id).subscribe({
+      next: (res) => {
+        this.playAgainSubmitting.set(false);
+        const payload = res.results;
+        if (payload?.session) {
+          this.session.set(payload.session);
+        }
+        const newId = payload?.new_session_id;
+        if (typeof newId === 'number' && newId > 0) {
+          void this.router.navigate(['/lobby', newId]);
+          this.snackBar.open('Rematch lobby is ready.', 'Close', { duration: 3500 });
+        }
+      },
+      error: (err) => {
+        this.playAgainSubmitting.set(false);
+        this.snackBar.open(
+          err?.error?.data?.error || err?.error?.message || 'Could not record play again',
+          'Close',
+          { duration: 5000 }
+        );
+      },
+    });
+  }
+
   formatStatus(status: string): string {
     return status
       .split('_')
@@ -978,7 +1068,7 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
       .open(ConfirmDialogComponent, {
         data: {
           title: 'Leave this game?',
-          message: 'You will leave the session and return to the list.',
+          message: 'You will leave the session and return to the lobby.',
           confirmText: 'Leave',
           confirmColor: 'warn',
         },
@@ -990,7 +1080,7 @@ export class GameSessionDetailComponent implements OnInit, OnDestroy, AfterViewI
         this.service.leaveGameSession(s.id).subscribe({
           next: () => {
             this.snackBar.open('Left session', 'Close', { duration: 2500 });
-            void this.router.navigate(['/game-sessions']);
+            void this.router.navigate(['/lobby']);
           },
           error: (err) => {
             this.snackBar.open(err?.error?.message || 'Failed to leave', 'Close', {

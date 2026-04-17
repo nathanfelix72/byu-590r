@@ -30,9 +30,9 @@
               <mat-icon>dashboard</mat-icon>
               <span>Dashboard</span>
             </a>
-            <a routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
+            <a routerLink="/lobby" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
               <mat-icon>sports_esports</mat-icon>
-              <span>Game Sessions</span>
+              <span>Lobby</span>
             </a>
           </nav>
         }
@@ -60,29 +60,29 @@
         </div>
       </div>
 
-      @if (showGameSessionsSubNav() && !navCompact()) {
+      @if (showLobbySubNav() && !navCompact()) {
         <nav class="secondary-nav" aria-label="Session categories">
           <div class="secondary-nav__track">
             <a
-              routerLink="/game-sessions"
+              routerLink="/lobby"
               [queryParams]="{ tab: 'in-progress' }"
-              [class.is-active]="gameSessionsListTab() === 'in-progress'"
+              [class.is-active]="lobbyListTab() === 'in-progress'"
             >
               Active
             </a>
             <a
-              routerLink="/game-sessions"
+              routerLink="/lobby"
               [queryParams]="{ tab: 'finished' }"
-              [class.is-active]="gameSessionsListTab() === 'finished'"
+              [class.is-active]="lobbyListTab() === 'finished'"
             >
               Completed
             </a>
             <a
-              routerLink="/game-sessions"
+              routerLink="/lobby"
               [queryParams]="{ tab: 'create' }"
-              [class.is-active]="gameSessionsListTab() === 'create'"
+              [class.is-active]="lobbyListTab() === 'create'"
             >
-              Create/Join
+              Let’s play
             </a>
           </div>
         </nav>
@@ -94,39 +94,39 @@
         <mat-icon>dashboard</mat-icon>
         <span>Dashboard</span>
       </a>
-      <a mat-menu-item routerLink="/game-sessions" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
+      <a mat-menu-item routerLink="/lobby" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: false }">
         <mat-icon>sports_esports</mat-icon>
-        <span>Game Sessions</span>
+        <span>Lobby</span>
       </a>
-      @if (showGameSessionsSubNav()) {
+      @if (showLobbySubNav()) {
         <mat-divider></mat-divider>
         <div class="nav-menu__section" aria-hidden="true">Sessions</div>
         <a
           mat-menu-item
-          routerLink="/game-sessions"
+          routerLink="/lobby"
           [queryParams]="{ tab: 'in-progress' }"
-          [class.is-active]="gameSessionsListTab() === 'in-progress'"
+          [class.is-active]="lobbyListTab() === 'in-progress'"
         >
           <mat-icon>play_circle</mat-icon>
           <span>Active</span>
         </a>
         <a
           mat-menu-item
-          routerLink="/game-sessions"
+          routerLink="/lobby"
           [queryParams]="{ tab: 'finished' }"
-          [class.is-active]="gameSessionsListTab() === 'finished'"
+          [class.is-active]="lobbyListTab() === 'finished'"
         >
           <mat-icon>check_circle</mat-icon>
           <span>Completed</span>
         </a>
         <a
           mat-menu-item
-          routerLink="/game-sessions"
+          routerLink="/lobby"
           [queryParams]="{ tab: 'create' }"
-          [class.is-active]="gameSessionsListTab() === 'create'"
+          [class.is-active]="lobbyListTab() === 'create'"
         >
           <mat-icon>add_circle_outline</mat-icon>
-          <span>Create/Join</span>
+          <span>Let’s play</span>
         </a>
       }
     </mat-menu>

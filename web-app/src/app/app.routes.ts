@@ -10,7 +10,13 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'game-sessions',
+    path: 'game-sessions/:id',
+    redirectTo: 'lobby/:id',
+    pathMatch: 'full',
+  },
+  { path: 'game-sessions', redirectTo: 'lobby', pathMatch: 'full' },
+  {
+    path: 'lobby',
     loadComponent: () =>
       import('./game-sessions/game-sessions.component').then(
         (m) => m.GameSessionsComponent
@@ -18,7 +24,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'game-sessions/:id',
+    path: 'lobby/:id',
     loadComponent: () =>
       import('./game-sessions/detail/game-session-detail.component').then(
         (m) => m.GameSessionDetailComponent

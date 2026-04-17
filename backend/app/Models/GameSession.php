@@ -24,6 +24,7 @@ class GameSession extends Model
         'game_session_background_picture',
         'status',
         'current_turn',
+        'started_at',
         'join_code',
         'state',
         'version',
@@ -34,6 +35,7 @@ class GameSession extends Model
         'state' => 'array',
         'version' => 'integer',
         'current_turn' => 'integer',
+        'started_at' => 'datetime',
         'rules' => 'array',
     ];
 

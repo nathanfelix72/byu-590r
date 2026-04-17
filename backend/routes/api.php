@@ -52,6 +52,7 @@ Route::middleware(\App\Http\Middleware\AuthenticateApi::class)->group(function (
         Route::delete('game-sessions/{id}', 'destroy');
         Route::post('game-sessions/{id}/ready', 'ready');
         Route::post('game-sessions/{id}/start', 'start');
+        Route::post('game-sessions/{id}/play-again', 'playAgain');
         Route::post('game-sessions/{id}/moves', 'move');
         Route::get('game-sessions/{id}/chat', 'chatIndex');
         Route::post('game-sessions/{id}/chat', 'chatStore');

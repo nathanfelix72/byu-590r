@@ -44,6 +44,52 @@
   color: color-mix(in srgb, var(--brand-accent) 68%, #c16b57 32%);
 }
 
+.statCard--people .statCard__value {
+  color: var(--text-primary);
+}
+
+.analyticsCard {
+  margin-bottom: 16px;
+  border-radius: 14px;
+}
+
+.analyticsCard__intro {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.opponentTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.opponentTable__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) 88px 88px 88px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.opponentTable__row--head {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-muted) 82%, var(--brand-primary) 18%);
+}
+
+.opponentTable__row--body {
+  border-top: 1px solid var(--divider);
+  background: var(--surface-elevated);
+  font-size: 14px;
+}
+
 .gamesCard {
   border-radius: 14px;
 }
@@ -91,11 +137,11 @@
 
 .gamesTable__row {
   display: grid;
-  grid-template-columns: minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(140px, 1fr) 84px;
+  grid-template-columns:
+    minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(140px, 1fr) minmax(200px, 1.35fr);
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
-  text-decoration: none;
   color: inherit;
 }
 
@@ -126,10 +172,23 @@
   white-space: nowrap;
 }
 
-.gamesTable__open {
-  text-align: right;
-  color: color-mix(in srgb, var(--brand-primary-strong) 75%, var(--text-primary) 25%);
-  font-weight: 700;
+.gamesTable__cell--started {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--text-secondary) 80%, var(--text-primary) 20%);
+  white-space: nowrap;
+}
+
+.gamesTable__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gamesTable__actions a[mat-stroked-button],
+.gamesTable__actions .mat-mdc-button {
+  flex: 0 0 auto;
 }
 
 .status-pill--waiting {
@@ -153,6 +212,15 @@
     flex: 1 1 170px;
   }
 
+  .opponentTable__row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .opponentTable__row--head {
+    display: none;
+  }
+
   .gamesTable__row {
     grid-template-columns: 1fr;
     gap: 6px;
@@ -167,8 +235,9 @@
     position: relative;
   }
 
-  .gamesTable__open {
-    text-align: left;
+  .gamesTable__actions {
+    justify-content: flex-start;
+    padding-top: 4px;
   }
 }
 

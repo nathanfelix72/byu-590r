@@ -20,6 +20,19 @@ class UnoEngineTest extends TestCase
         }
     }
 
+    public function test_initState_up_card_is_never_draw2_or_wild_draw4(): void
+    {
+        $engine = new UnoEngine();
+        for ($i = 0; $i < 80; $i++) {
+            $state = $engine->initState([1, 2]);
+            $discard = $state['discard'] ?? [];
+            $this->assertNotEmpty($discard);
+            $top = $discard[count($discard) - 1];
+            $this->assertNotSame('draw2', $top['value'] ?? null);
+            $this->assertNotSame('wild_draw4', $top['value'] ?? null);
+        }
+    }
+
     public function test_wild_draw4_allowed_even_with_matching_color_in_hand(): void
     {
         $engine = new UnoEngine();
