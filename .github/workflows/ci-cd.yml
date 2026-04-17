@@ -103,6 +103,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pushing .tf files to Git does not change AWS; only terraform apply (or your IaC pipeline) does.
+      - name: Preflight — TCP to EC2 (SSH + HTTP)
+        run: |
+          set -e
+          HOST="${{ secrets.EC2_HOST }}"
+          if [ -z "$HOST" ]; then
+            echo "::error::EC2_HOST secret is empty. Set it to the Elastic IP (terraform output ec2_host)."
+            exit 1
+          fi
+          echo "Probing $HOST — port 22 (SSH) and 80 (HTTP), ~10s timeout each..."
+          ok22=false
+          ok80=false
+          timeout 10 bash -c "echo >/dev/tcp/$HOST/22" && ok22=true || true
+          timeout 10 bash -c "echo >/dev/tcp/$HOST/80" && ok80=true || true
+          if [ "$ok22" = true ]; then echo "Port 22: reachable"; else echo "Port 22: NOT reachable"; fi
+          if [ "$ok80" = true ]; then echo "Port 80: reachable"; else echo "Port 80: NOT reachable"; fi
+          if [ "$ok22" != true ]; then
+            echo ""
+            echo "SSH preflight failed. Typical causes:"
+            echo "  - EC2_HOST in GitHub does not match the current Elastic IP (update from: terraform output ec2_host)."
+            echo "  - Instance stopped or EIP no longer attached to that instance."
+            echo "  - Security group does not allow 22 from the internet (run terraform apply if you changed .tf locally)."
+            exit 1
+          fi
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
