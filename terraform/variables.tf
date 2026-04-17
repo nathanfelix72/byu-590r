@@ -46,6 +46,18 @@ variable "ssh_ingress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "s3_dev_bucket_name" {
+  description = "Exact name of the dev S3 bucket (stable). Set this to match buckets that already exist in AWS/Terraform state so apply does not replace them. Leave empty to use {project_name}-dev-{random_suffix} (suffix is fixed in state after first apply)."
+  type        = string
+  default     = ""
+}
+
+variable "s3_prod_bucket_name" {
+  description = "Exact name of the prod S3 bucket (stable). Leave empty to use {project_name}-prod-{random_suffix}."
+  type        = string
+  default     = ""
+}
+
 variable "book_images_path" {
   description = "Path to book images directory relative to project root"
   type        = string

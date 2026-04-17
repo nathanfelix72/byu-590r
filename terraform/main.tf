@@ -306,18 +306,16 @@ resource "aws_eip_association" "byu_590r_eip_assoc" {
   allocation_id = aws_eip.byu_590r_eip.id
 }
 
-# Random ID for prod bucket suffix (equivalent to openssl rand -hex 4)
+# Stable suffix for S3 bucket names (stored in state; does not change on every apply)
 resource "random_id" "prod_bucket_suffix" {
   byte_length = 2 # 2 bytes = 4 hex characters
 }
 
-# Generate unique bucket names (matching bash script pattern)
 locals {
-  # Compact timestamp for unique bucket names (YYYYMMDDhhmmss)
-  bucket_timestamp = formatdate("YYYYMMDDhhmmss", timestamp())
-
-  dev_bucket_name  = "${var.project_name}-dev-${local.bucket_timestamp}"
-  prod_bucket_name = "${var.project_name}-prod-${local.bucket_timestamp}-${random_id.prod_bucket_suffix.hex}"
+  # No timestamp() — avoids replacing buckets on every terraform apply.
+  # Optional pins (s3_*_bucket_name in tfvars) override when buckets already exist.
+  dev_bucket_name  = var.s3_dev_bucket_name != "" ? var.s3_dev_bucket_name : "${var.project_name}-dev-${random_id.prod_bucket_suffix.hex}"
+  prod_bucket_name = var.s3_prod_bucket_name != "" ? var.s3_prod_bucket_name : "${var.project_name}-prod-${random_id.prod_bucket_suffix.hex}"
 }
 
 # S3 Bucket - Dev
