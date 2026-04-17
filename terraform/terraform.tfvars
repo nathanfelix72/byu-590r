@@ -18,10 +18,10 @@ allowed_cidr_blocks = ["0.0.0.0/0"]
 # SSH for GitHub Actions deploys; keep 0.0.0.0/0 unless you use another deploy path (e.g. SSM)
 ssh_ingress_cidr_blocks = ["0.0.0.0/0"]
 
-# S3: stable names (no timestamp). Leave commented for new stacks; uncomment and set to your
-# existing bucket names if Terraform state/AWS already has buckets you want to keep:
-# s3_dev_bucket_name  = "byu-590r-dev-xxxxxxxx"
-# s3_prod_bucket_name = "byu-590r-prod-xxxxxxxx-yyyy"
+# S3: pin names to match existing buckets in AWS / state (avoids replace on apply).
+# New deployments: remove these two lines to get stable auto-generated names, or set your own.
+s3_dev_bucket_name  = "byu-590r-dev-20260207193209"
+s3_prod_bucket_name = "byu-590r-prod-20260207193209-484a"
 
 # Book Images Configuration
 book_images_path = "backend/public/assets/books"
