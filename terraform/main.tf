@@ -25,9 +25,9 @@ resource "aws_security_group_rule" "ssh" {
   from_port         = 22
   to_port           = 22
   protocol          = "tcp"
-  cidr_blocks       = var.allowed_cidr_blocks
+  cidr_blocks       = var.ssh_ingress_cidr_blocks
   security_group_id = aws_security_group.byu_590r_sg.id
-  description       = "SSH access"
+  description       = "SSH access (CI/deploy; independent of web/API CIDRs)"
 }
 
 resource "aws_security_group_rule" "http" {
@@ -308,7 +308,7 @@ resource "aws_eip_association" "byu_590r_eip_assoc" {
 
 # Random ID for prod bucket suffix (equivalent to openssl rand -hex 4)
 resource "random_id" "prod_bucket_suffix" {
-  byte_length = 2  # 2 bytes = 4 hex characters
+  byte_length = 2 # 2 bytes = 4 hex characters
 }
 
 # Generate unique bucket names (matching bash script pattern)
@@ -364,9 +364,9 @@ resource "aws_s3_bucket_public_access_block" "prod" {
 # Uses placeholder.jpg for any key whose file is missing so production always has all seeded image keys.
 # path.module/.. is repo root when this module lives at <repo>/terraform
 locals {
-  book_images_dir       = abspath("${path.module}/../${var.book_images_path}")
-  book_image_keys       = toset(var.book_images)
-  placeholder_path      = "${local.book_images_dir}/placeholder.jpg"
+  book_images_dir  = abspath("${path.module}/../${var.book_images_path}")
+  book_image_keys  = toset(var.book_images)
+  placeholder_path = "${local.book_images_dir}/placeholder.jpg"
   # For each key: use the real file if present, else the committed placeholder image
   book_image_source = {
     for f in local.book_image_keys : f =>

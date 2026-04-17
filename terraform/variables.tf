@@ -35,7 +35,13 @@ variable "ami_id" {
 }
 
 variable "allowed_cidr_blocks" {
-  description = "CIDR blocks allowed for security group ingress rules"
+  description = "CIDR blocks allowed for HTTP (80), HTTPS (443), and backend API (4444). Does not affect SSH; use ssh_ingress_cidr_blocks for port 22."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "ssh_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed for SSH (port 22). Defaults to the whole internet so GitHub Actions can deploy from changing runner IPs. If you restrict allowed_cidr_blocks for web traffic, keep this open (0.0.0.0/0) or add ranges that include your CI runners."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }

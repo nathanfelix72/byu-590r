@@ -6,9 +6,9 @@
 output "github_actions_secrets" {
   description = "Secret names and values for GitHub Actions (Settings → Secrets and variables → Actions)"
   value = {
-    EC2_HOST       = aws_eip.byu_590r_eip.public_ip
-    S3_BUCKET      = aws_s3_bucket.prod.id   # Production bucket for deployments
-    S3_BUCKET_DEV = aws_s3_bucket.dev.id    # Dev bucket (e.g. for local .env)
+    EC2_HOST      = aws_eip.byu_590r_eip.public_ip
+    S3_BUCKET     = aws_s3_bucket.prod.id # Production bucket for deployments
+    S3_BUCKET_DEV = aws_s3_bucket.dev.id  # Dev bucket (e.g. for local .env)
     INSTANCE_ID   = aws_instance.byu_590r_server.id
   }
 }
@@ -81,7 +81,7 @@ output "backend_api_url" {
 
 output "summary" {
   description = "Summary of created resources"
-  value = <<-EOT
+  value       = <<-EOT
     ╔══════════════════════════════════════════════════════════════════════════════╗
     ║                                                                              ║
     ║                    🚀 INFRASTRUCTURE SETUP COMPLETE 🚀                    ║
