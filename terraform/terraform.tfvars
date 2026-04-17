@@ -9,8 +9,8 @@ project_name = "byu-590r"
 # Environment
 environment = "production" # Can be 'development', 'local', or 'production'
 
-# EC2 Configuration
-instance_type = "t2.micro"
+# EC2 Configuration (t3.medium: 2 vCPU / 4 GiB — better for MySQL + Apache + PHP than t2.micro)
+instance_type = "t3.medium"
 ami_id        = "ami-04f34746e5e1ec0fe"
 
 # Security Group Configuration (HTTP/HTTPS/API — not SSH)
