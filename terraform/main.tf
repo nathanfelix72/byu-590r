@@ -322,7 +322,8 @@ locals {
 
 # S3 Bucket - Dev
 resource "aws_s3_bucket" "dev" {
-  bucket = local.dev_bucket_name
+  bucket        = local.dev_bucket_name
+  force_destroy = true # allow Terraform to delete non-empty bucket on replace/destroy
 
   tags = {
     Name        = "byu-590r-dev"
@@ -342,7 +343,8 @@ resource "aws_s3_bucket_public_access_block" "dev" {
 
 # S3 Bucket - Prod
 resource "aws_s3_bucket" "prod" {
-  bucket = local.prod_bucket_name
+  bucket        = local.prod_bucket_name
+  force_destroy = true
 
   tags = {
     Name        = "byu-590r-prod"
