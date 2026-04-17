@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: '', redirectTo: '/home', pathMatch: 'full' },
   {
     path: 'home',
     loadComponent: () =>
@@ -43,5 +43,5 @@ export const routes: Routes = [
         (m) => m.ResetPasswordComponent
       ),
   },
-  { path: '**', redirectTo: '/login' },
+  { path: '**', redirectTo: '/home' },
 ];

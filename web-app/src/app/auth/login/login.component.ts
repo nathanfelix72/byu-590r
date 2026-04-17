@@ -70,6 +70,10 @@ export class LoginComponent {
   vimeoEmbedUrl: SafeResourceUrl;
   
   constructor() {
+    if (this.authStore.isAuthenticated()) {
+      void this.router.navigate(['/home'], { replaceUrl: true });
+    }
+
     // Initialize the Vimeo embed URL once in constructor to prevent reloads
     const url = `https://player.vimeo.com/video/${this.vimeoVideoId}?autoplay=1&loop=1&muted=1&background=1&controls=0&responsive=1`;
     this.vimeoEmbedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
